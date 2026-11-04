@@ -149,8 +149,8 @@ export const MapView: React.FC<MapViewProps> = ({
   onSelectParcel,
   onOpenReport,
 }) => {
-  // Map Type: 'base' (일반지도) | 'cadastral' (지적도) | 'satellite' (위성지도) | 'topo' (지형지도)
-  const [mapMode, setMapMode] = useState<'base' | 'cadastral' | 'satellite' | 'topo'>('cadastral');
+  // Map Type: 'base' (일반지도) | 'satellite' (위성지도) | 'topo' (지형지도)
+  const [mapMode, setMapMode] = useState<'base' | 'satellite' | 'topo'>('base');
   const [showBuffers, setShowBuffers] = useState<boolean>(false);
   const [outlineOnly, setOutlineOnly] = useState<boolean>(false); // 🌟 활성화 시 내부 투명, 비활성화 시 50% 투명도 면적 채우기
   const [showCadastral, setShowCadastral] = useState<boolean>(true); // 🌟 대표님 요청: 전국 연속지적도(지번 경계선) 레이어
@@ -571,44 +571,11 @@ export const MapView: React.FC<MapViewProps> = ({
             </span>
           </button>
 
-          {/* 2. 지적도 버튼 (대표님 요청: 파란 연속지적선 상시 표출 모드) */}
-          <button
-            type="button"
-            onClick={() => {
-              setMapMode('cadastral');
-              setShowCadastral(true);
-            }}
-            className={`w-18 flex flex-col items-center rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
-              mapMode === 'cadastral'
-                ? 'border-blue-600 ring-2 ring-blue-500/30 shadow-md scale-102'
-                : 'border-slate-200 hover:border-slate-300 opacity-75 hover:opacity-100'
-            }`}
-          >
-            <div className="w-full h-10 bg-[#f8fafc] relative overflow-hidden flex items-center justify-center">
-              <svg viewBox="0 0 100 60" className="w-full h-full object-cover">
-                <rect width="100" height="60" fill="#f8fafc" />
-                {/* 지적 필지 분할선 */}
-                <path d="M0,20 L100,20 M0,42 L100,42 M35,0 L35,60 M70,0 L70,60" stroke="#3b82f6" strokeWidth="1.5" fill="none" />
-                <polygon points="35,20 70,20 70,42 35,42" fill="#93c5fd" fillOpacity="0.45" />
-                <text x="44" y="34" fontSize="9" fontWeight="bold" fill="#1e3a8a">지적</text>
-                <circle cx="52" cy="25" r="2.5" fill="#ef4444" />
-              </svg>
-            </div>
-            <span
-              className={`py-1 text-xs font-bold tracking-tight block w-full text-center ${
-                mapMode === 'cadastral' ? 'text-blue-600 bg-blue-50/50 font-extrabold' : 'text-slate-700 bg-white'
-              }`}
-            >
-              지적도
-            </span>
-          </button>
-
-          {/* 3. 위성지도 버튼 */}
+          {/* 2. 위성지도 버튼 */}
           <button
             type="button"
             onClick={() => {
               setMapMode('satellite');
-              setShowCadastral(false);
             }}
             className={`w-18 flex flex-col items-center rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
               mapMode === 'satellite'
@@ -634,12 +601,11 @@ export const MapView: React.FC<MapViewProps> = ({
             </span>
           </button>
 
-          {/* 4. 지형지도 버튼 */}
+          {/* 3. 지형지도 버튼 */}
           <button
             type="button"
             onClick={() => {
               setMapMode('topo');
-              setShowCadastral(false);
             }}
             className={`w-18 flex flex-col items-center rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
               mapMode === 'topo'
@@ -714,7 +680,7 @@ export const MapView: React.FC<MapViewProps> = ({
           </label>
 
           {/* 지적도 상세 줌 레벨 안내 알림 (국토부 정책상 줌 14 이상에서 필지선 제공) */}
-          {(mapMode === 'cadastral' || showCadastral) && currentZoom < 14 && (
+          {showCadastral && currentZoom < 14 && (
             <div className="pt-1.5 border-t border-slate-800 text-[11px] text-amber-300 flex items-center space-x-1 font-medium">
               <span>💡 지도를 더 확대(줌 14 이상)하면 국토부 지적선이 뜹니다</span>
             </div>
@@ -775,8 +741,8 @@ export const MapView: React.FC<MapViewProps> = ({
           onZoomChange={setCurrentZoom}
         />
 
-        {/* 1. 일반지도 & 지적도 기본 배경 (브이월드 Base 타일) */}
-        {(mapMode === 'base' || mapMode === 'cadastral') && (
+        {/* 1. 일반지도 기본 배경 (브이월드 Base 타일) */}
+        {mapMode === 'base' && (
           <TileLayer
             attribution='&copy; <a href="https://www.vworld.kr/">국토교통부 브이월드</a>'
             url={`https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/Base/{z}/{y}/{x}.png`}
@@ -816,7 +782,7 @@ export const MapView: React.FC<MapViewProps> = ({
         )}
 
         {/* 4. 국토교통부 공식 연속지적도(WMS) 레이어 - 전국 모든 필지의 지번 경계선 오버레이 (줌 14~19 정밀 캐싱) */}
-        {(mapMode === 'cadastral' || showCadastral) && (
+        {showCadastral && (
           <WMSTileLayer
             url="https://api.vworld.kr/req/wms"
             params={
