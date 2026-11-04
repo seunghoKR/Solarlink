@@ -74,6 +74,34 @@ const MapEventHandler: React.FC<{
   return null;
 };
 
+// 🌟 대표님 요청: 국토부 연속지적도가 켜져 있을 때 지적도가 절대 사라지지 않도록 최소 줌(17.5x) 락 & 18.0x 자동 줌인
+const CadastralZoomController: React.FC<{
+  showCadastral: boolean;
+  onZoomChange: (zoom: number) => void;
+}> = ({ showCadastral, onZoomChange }) => {
+  const map = useMap();
+
+  useEffect(() => {
+    try {
+      if (showCadastral) {
+        map.setMinZoom(17.5);
+        map.setMaxZoom(19);
+        if (map.getZoom() < 17.5) {
+          map.setZoom(18.0, { animate: true });
+          onZoomChange(18.0);
+        }
+      } else {
+        map.setMinZoom(6);
+        map.setMaxZoom(19);
+      }
+    } catch (err) {
+      console.warn('지적도 줌 제어 예외 방지:', err);
+    }
+  }, [showCadastral, map, onZoomChange]);
+
+  return null;
+};
+
 // 🌟 대표님 요청: 마우스로 드래그하면서 자유롭게 연속 확대/축소할 수 있는 정밀 줌 슬라이더 컨트롤러
 const ZoomSliderControl: React.FC<{
   currentZoom: number;
@@ -163,45 +191,11 @@ export const MapView: React.FC<MapViewProps> = ({
   const [showCadastral, setShowCadastral] = useState<boolean>(true); // 🌟 대표님 요청: 전국 연속지적도(지번 경계선) 레이어
   const [showGridLines, setShowGridLines] = useState<boolean>(true); // 🌟 대표님 요청: re100market 특화 한전 계통 연계선 및 변전소 시각화
   const [currentZoom, setCurrentZoom] = useState<number>(selectedParcel ? 18 : 18);
-  const mapRef = useRef<L.Map | null>(null);
 
-  // 🌟 대표님 요청: 국토부 연속지적도 토글 시, 지적도가 무조건 100% 표출되는 임계 범위(17.5x ~ 19.0x)로 락(Lock) 및 자동 줌인(18.0x)!
+  // 🌟 대표님 요청: 국토부 연속지적도 토글
   const handleToggleCadastral = () => {
-    const nextState = !showCadastral;
-    setShowCadastral(nextState);
-
-    if (mapRef.current) {
-      if (nextState) {
-        mapRef.current.setMinZoom(17.5);
-        mapRef.current.setMaxZoom(19);
-        const current = mapRef.current.getZoom();
-        if (current < 17.5) {
-          mapRef.current.setZoom(18.0, { animate: true });
-          setCurrentZoom(18.0);
-        }
-      } else {
-        mapRef.current.setMinZoom(6);
-        mapRef.current.setMaxZoom(19);
-      }
-    }
+    setShowCadastral((prev) => !prev);
   };
-
-  // 초기 렌더링 시 지적도 가시 줌 락(Lock) 동기화
-  useEffect(() => {
-    if (mapRef.current) {
-      if (showCadastral) {
-        mapRef.current.setMinZoom(17.5);
-        mapRef.current.setMaxZoom(19);
-        if (mapRef.current.getZoom() < 17.5) {
-          mapRef.current.setZoom(18.0, { animate: true });
-          setCurrentZoom(18.0);
-        }
-      } else {
-        mapRef.current.setMinZoom(6);
-        mapRef.current.setMaxZoom(19);
-      }
-    }
-  }, [showCadastral]);
 
   // 우클릭 컨텍스트 팝업 상태
   const [rightClickPos, setRightClickPos] = useState<[number, number] | null>(null);
@@ -770,9 +764,8 @@ export const MapView: React.FC<MapViewProps> = ({
 
       {/* Leaflet Map Canvas */}
       <MapContainer
-        ref={mapRef}
         center={initialCenter}
-        zoom={showCadastral ? 18 : 7}
+        zoom={selectedParcel ? 18 : 7}
         minZoom={showCadastral ? 17.5 : 6}
         maxZoom={19}
         className="w-full h-full"
@@ -781,6 +774,10 @@ export const MapView: React.FC<MapViewProps> = ({
         zoomDelta={0.5}
         wheelPxPerZoomLevel={90}
       >
+        <CadastralZoomController
+          showCadastral={showCadastral}
+          onZoomChange={setCurrentZoom}
+        />
         <MapRecenter
           targetId={selectedParcel?.id || null}
           center={targetCenter}
