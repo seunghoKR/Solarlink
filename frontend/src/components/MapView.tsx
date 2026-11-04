@@ -68,6 +68,79 @@ const MapEventHandler: React.FC<{
   return null;
 };
 
+// 🌟 대표님 요청: 마우스로 드래그하면서 자유롭게 연속 확대/축소할 수 있는 정밀 줌 슬라이더 컨트롤러
+const ZoomSliderControl: React.FC<{
+  currentZoom: number;
+  onZoomChange: (zoom: number) => void;
+}> = ({ currentZoom, onZoomChange }) => {
+  const map = useMap();
+
+  const handleZoomIn = () => {
+    map.zoomIn(0.5);
+  };
+
+  const handleZoomOut = () => {
+    map.zoomOut(0.5);
+  };
+
+  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newZoom = parseFloat(e.target.value);
+    map.setZoom(newZoom);
+    onZoomChange(newZoom);
+  };
+
+  return (
+    <div
+      className="absolute bottom-8 right-6 z-[950] pointer-events-auto select-none"
+      onWheel={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => e.stopPropagation()}
+    >
+      <div className="bg-slate-900/90 backdrop-blur-md border border-slate-700/80 p-2 rounded-xl shadow-2xl flex flex-col items-center space-y-2">
+        {/* 확대 버튼 */}
+        <button
+          type="button"
+          onClick={handleZoomIn}
+          className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-extrabold text-base flex items-center justify-center border border-slate-700 hover:border-amber-500 transition cursor-pointer shadow active:scale-95"
+          title="미세 확대 (+0.5x)"
+        >
+          +
+        </button>
+
+        {/* 수직 줌 슬라이더 트랙 (마우스로 부드럽게 드래그 조절) */}
+        <div className="h-32 flex flex-col items-center justify-center py-1">
+          <input
+            type="range"
+            min="6"
+            max="19"
+            step="0.1"
+            value={currentZoom}
+            onChange={handleSliderChange}
+            className="w-28 -rotate-90 origin-center accent-amber-500 cursor-pointer bg-slate-700 rounded-lg"
+            style={{ margin: '30px 0' }}
+            title={`마우스 드래그 줌 조절 (현재: ${currentZoom.toFixed(1)}x)`}
+          />
+        </div>
+
+        {/* 축소 버튼 */}
+        <button
+          type="button"
+          onClick={handleZoomOut}
+          className="w-8 h-8 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-100 font-extrabold text-base flex items-center justify-center border border-slate-700 hover:border-amber-500 transition cursor-pointer shadow active:scale-95"
+          title="미세 축소 (-0.5x)"
+        >
+          -
+        </button>
+
+        {/* 배율 수치 뱃지 */}
+        <div className="text-[10px] font-mono font-bold text-amber-400 bg-slate-800/90 px-1.5 py-0.5 rounded border border-slate-700 whitespace-nowrap">
+          {currentZoom.toFixed(1)}x
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const MapView: React.FC<MapViewProps> = ({
   parcels,
   regions,
@@ -261,8 +334,8 @@ export const MapView: React.FC<MapViewProps> = ({
   const buildParcelFromRightClick = (data: ReverseGeocodeResult): Parcel => {
     const lat = data.lat;
     const lng = data.lng;
-    const rLat = 0.0006 + Math.sqrt(data.estimatedPyeong / 5000) * 0.00045;
-    const rLng = 0.0007 + Math.sqrt(data.estimatedPyeong / 5000) * 0.00055;
+    const rLat = 0.00022 + Math.sqrt(data.estimatedPyeong / 5000) * 0.00018;
+    const rLng = 0.00026 + Math.sqrt(data.estimatedPyeong / 5000) * 0.00022;
 
     // 8각 불규칙 지적도 형태 폴리곤 생성
     const rightClickPolygon: [number, number][] = [];
@@ -629,6 +702,9 @@ export const MapView: React.FC<MapViewProps> = ({
         zoom={7}
         className="w-full h-full"
         zoomControl={false}
+        zoomSnap={0.1}
+        zoomDelta={0.5}
+        wheelPxPerZoomLevel={90}
       >
         <MapRecenter
           targetId={selectedParcel?.id || null}
@@ -638,6 +714,11 @@ export const MapView: React.FC<MapViewProps> = ({
 
         <MapEventHandler
           onRightClick={handleMapRightClick}
+          onZoomChange={setCurrentZoom}
+        />
+
+        <ZoomSliderControl
+          currentZoom={currentZoom}
           onZoomChange={setCurrentZoom}
         />
 
