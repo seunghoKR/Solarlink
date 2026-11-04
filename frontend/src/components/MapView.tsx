@@ -480,7 +480,10 @@ export const MapView: React.FC<MapViewProps> = ({
           {/* 3. 위성지도 버튼 */}
           <button
             type="button"
-            onClick={() => setMapMode('satellite')}
+            onClick={() => {
+              setMapMode('satellite');
+              setShowCadastral(false);
+            }}
             className={`w-18 flex flex-col items-center rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
               mapMode === 'satellite'
                 ? 'border-blue-600 ring-2 ring-blue-500/30 shadow-md scale-102'
@@ -505,10 +508,13 @@ export const MapView: React.FC<MapViewProps> = ({
             </span>
           </button>
 
-          {/* 3. 지형지도 버튼 */}
+          {/* 4. 지형지도 버튼 */}
           <button
             type="button"
-            onClick={() => setMapMode('topo')}
+            onClick={() => {
+              setMapMode('topo');
+              setShowCadastral(false);
+            }}
             className={`w-18 flex flex-col items-center rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
               mapMode === 'topo'
                 ? 'border-blue-600 ring-2 ring-blue-500/30 shadow-md scale-102'
@@ -644,13 +650,24 @@ export const MapView: React.FC<MapViewProps> = ({
           />
         )}
 
-        {/* 2. 위성지도 (ESRI World Imagery 고해상도) */}
+        {/* 2. 위성지도 (국토교통부 브이월드 최신 고해상도 항공위성 - 최대 줌 19 완벽 지원, 확대 시 사라짐 완전 방지!) */}
         {mapMode === 'satellite' && (
-          <TileLayer
-            attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
-            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-            maxZoom={18}
-          />
+          <>
+            <TileLayer
+              attribution='&copy; <a href="https://www.vworld.kr/">국토교통부 브이월드 항공위성</a>'
+              url={`https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/Satellite/{z}/{y}/{x}.jpeg`}
+              maxNativeZoom={18}
+              maxZoom={19}
+            />
+            {/* 주요 도로 및 지명 하이브리드 오버레이 */}
+            <TileLayer
+              url={`https://api.vworld.kr/req/wmts/1.0.0/${VWORLD_KEY}/Hybrid/{z}/{y}/{x}.png`}
+              maxNativeZoom={18}
+              maxZoom={19}
+              opacity={0.85}
+              zIndex={300}
+            />
+          </>
         )}
 
         {/* 3. 지형지도 (OpenTopoMap - 고정밀 등고선/지형 기복/표고) */}
