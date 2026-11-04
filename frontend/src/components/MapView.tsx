@@ -78,7 +78,9 @@ const MapEventHandler: React.FC<{
 const ZoomSliderControl: React.FC<{
   currentZoom: number;
   onZoomChange: (zoom: number) => void;
-}> = ({ currentZoom, onZoomChange }) => {
+  minZoom?: number;
+  maxZoom?: number;
+}> = ({ currentZoom, onZoomChange, minZoom = 6, maxZoom = 19 }) => {
   const map = useMap();
 
   const handleZoomIn = () => {
@@ -117,14 +119,14 @@ const ZoomSliderControl: React.FC<{
         <div className="h-32 flex flex-col items-center justify-center py-1">
           <input
             type="range"
-            min="6"
-            max="19"
+            min={minZoom}
+            max={maxZoom}
             step="0.1"
-            value={currentZoom}
+            value={Math.max(minZoom, Math.min(maxZoom, currentZoom))}
             onChange={handleSliderChange}
             className="w-28 -rotate-90 origin-center accent-amber-500 cursor-pointer bg-slate-700 rounded-lg"
             style={{ margin: '30px 0' }}
-            title={`마우스 드래그 줌 조절 (현재: ${currentZoom.toFixed(1)}x)`}
+            title={`마우스 드래그 줌 조절 (현재: ${currentZoom.toFixed(1)}x / 범위: ${minZoom}~${maxZoom})`}
           />
         </div>
 
@@ -160,22 +162,46 @@ export const MapView: React.FC<MapViewProps> = ({
   const [outlineOnly, setOutlineOnly] = useState<boolean>(false); // 🌟 활성화 시 내부 투명, 비활성화 시 50% 투명도 면적 채우기
   const [showCadastral, setShowCadastral] = useState<boolean>(true); // 🌟 대표님 요청: 전국 연속지적도(지번 경계선) 레이어
   const [showGridLines, setShowGridLines] = useState<boolean>(true); // 🌟 대표님 요청: re100market 특화 한전 계통 연계선 및 변전소 시각화
-  const [currentZoom, setCurrentZoom] = useState<number>(selectedParcel ? 16 : 7);
+  const [currentZoom, setCurrentZoom] = useState<number>(selectedParcel ? 18 : 18);
   const mapRef = useRef<L.Map | null>(null);
 
-  // 🌟 대표님 요청: 국토부 연속지적도 토글 시, 지적도가 가장 선명하게 보이는 최적 확대 상태(16.5x)로 자동 줌인!
+  // 🌟 대표님 요청: 국토부 연속지적도 토글 시, 지적도가 무조건 100% 표출되는 임계 범위(17.5x ~ 19.0x)로 락(Lock) 및 자동 줌인(18.0x)!
   const handleToggleCadastral = () => {
     const nextState = !showCadastral;
     setShowCadastral(nextState);
 
-    if (nextState && mapRef.current) {
-      const zoom = mapRef.current.getZoom();
-      if (zoom < 16) {
-        mapRef.current.setZoom(16.5, { animate: true });
-        setCurrentZoom(16.5);
+    if (mapRef.current) {
+      if (nextState) {
+        mapRef.current.setMinZoom(17.5);
+        mapRef.current.setMaxZoom(19);
+        const current = mapRef.current.getZoom();
+        if (current < 17.5) {
+          mapRef.current.setZoom(18.0, { animate: true });
+          setCurrentZoom(18.0);
+        }
+      } else {
+        mapRef.current.setMinZoom(6);
+        mapRef.current.setMaxZoom(19);
       }
     }
   };
+
+  // 초기 렌더링 시 지적도 가시 줌 락(Lock) 동기화
+  useEffect(() => {
+    if (mapRef.current) {
+      if (showCadastral) {
+        mapRef.current.setMinZoom(17.5);
+        mapRef.current.setMaxZoom(19);
+        if (mapRef.current.getZoom() < 17.5) {
+          mapRef.current.setZoom(18.0, { animate: true });
+          setCurrentZoom(18.0);
+        }
+      } else {
+        mapRef.current.setMinZoom(6);
+        mapRef.current.setMaxZoom(19);
+      }
+    }
+  }, [showCadastral]);
 
   // 우클릭 컨텍스트 팝업 상태
   const [rightClickPos, setRightClickPos] = useState<[number, number] | null>(null);
@@ -746,7 +772,9 @@ export const MapView: React.FC<MapViewProps> = ({
       <MapContainer
         ref={mapRef}
         center={initialCenter}
-        zoom={7}
+        zoom={showCadastral ? 18 : 7}
+        minZoom={showCadastral ? 17.5 : 6}
+        maxZoom={19}
         className="w-full h-full"
         zoomControl={false}
         zoomSnap={0.1}
@@ -767,6 +795,8 @@ export const MapView: React.FC<MapViewProps> = ({
         <ZoomSliderControl
           currentZoom={currentZoom}
           onZoomChange={setCurrentZoom}
+          minZoom={showCadastral ? 17.5 : 6}
+          maxZoom={19}
         />
 
         {/* 1. 일반지도 기본 배경 (브이월드 Base 타일) */}
@@ -809,7 +839,7 @@ export const MapView: React.FC<MapViewProps> = ({
           />
         )}
 
-        {/* 4. 국토교통부 공식 연속지적도(WMS) 레이어 - 전국 모든 필지의 지번 경계선 오버레이 (줌 14~19 정밀 캐싱) */}
+        {/* 4. 국토교통부 공식 연속지적도(WMS) 레이어 - 전국 모든 필지의 지번 경계선 오버레이 (줌 17.5~19 정밀 표출) */}
         {showCadastral && (
           <WMSTileLayer
             url="https://api.vworld.kr/req/wms"
@@ -822,10 +852,12 @@ export const MapView: React.FC<MapViewProps> = ({
                 styles: 'lt_c_landinfobasemap',
                 format: 'image/png',
                 transparent: true,
+                crs: 'EPSG:3857',
                 key: VWORLD_KEY,
+                domain: 're100life.com',
               } as any
             }
-            minZoom={14}
+            minZoom={17}
             maxZoom={19}
             updateWhenIdle={false}
             updateWhenZooming={true}
