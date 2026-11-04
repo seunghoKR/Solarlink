@@ -2,8 +2,8 @@
 
 > **Design Lead**: AI 디자인실장 영자 (Youngja) 💖  
 > **Target Project**: Lifety Solar Intelligence (대한민국 태양광 부지 탐색 및 개발성 분석 플랫폼)  
-> **Version**: 1.0.0  
-> **Last Updated**: 2026-11-03  
+> **Version**: 1.1.0  
+> **Last Updated**: 2026-11-05  
 
 ---
 
