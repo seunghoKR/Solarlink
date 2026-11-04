@@ -1,3 +1,6 @@
+import type { Parcel } from '../types/solar';
+import { MOCK_PARCELS } from '../data/mockParcels';
+
 /**
  * Lifety Solar Intelligence - SaaS Data & Audit Storage Service
  * 사용자 검색 이력, 관심 지역(북마크), 사용자 활동 로그(Audit Log)를 체계적으로 관리합니다.
@@ -212,4 +215,53 @@ export function saveBookmark(
     console.warn('북마크 저장 실패:', e);
     return [];
   }
+}
+
+const STORAGE_KEY_LAST_PARCEL_PREFIX = 'lifety_last_parcel_';
+const STORAGE_KEY_LAST_PARCEL_GLOBAL = 'lifety_last_parcel_global';
+
+/**
+ * 4. 사용자의 최근 검색/조회 부지 (Last Searched/Viewed Parcel)
+ * 🌟 대표님 요청: 사용자가 로그인하거나 새로 접속했을 때, 항상 고정된 곳이 아닌
+ * 가장 최근에 검색/분석했던 부지를 기본값으로 지도를 열어줍니다.
+ */
+export function saveLastViewedParcel(userId: string = 'guest', parcel: Parcel): void {
+  try {
+    const data = JSON.stringify(parcel);
+    localStorage.setItem(`${STORAGE_KEY_LAST_PARCEL_PREFIX}${userId}`, data);
+    localStorage.setItem(STORAGE_KEY_LAST_PARCEL_GLOBAL, data);
+  } catch (e) {
+    console.warn('최근 부지 저장 실패:', e);
+  }
+}
+
+export function getLastViewedParcel(userId: string = 'guest'): Parcel | null {
+  try {
+    // 1. 해당 사용자 전용 최근 부지
+    const userRaw = localStorage.getItem(`${STORAGE_KEY_LAST_PARCEL_PREFIX}${userId}`);
+    if (userRaw) {
+      return JSON.parse(userRaw);
+    }
+    // 2. 전체 공용 최근 부지
+    const globalRaw = localStorage.getItem(STORAGE_KEY_LAST_PARCEL_GLOBAL);
+    if (globalRaw) {
+      return JSON.parse(globalRaw);
+    }
+    return null;
+  } catch (e) {
+    console.warn('최근 부지 로드 실패:', e);
+    return null;
+  }
+}
+
+/**
+ * 5. 고정된 위치 방지용 추천 부지 선택기 (Random / Featured Parcel)
+ * 🌟 대표님 요청: "항상 고정된 곳만 나오지 않게 하자"
+ * 저장된 최근 검색지가 없을 때도 전국 고적합도(88점 이상) 우수 부지 중 매번 신선하게 추천 부지를 선정합니다.
+ */
+export function getRandomFeaturedParcel(): Parcel {
+  const highSuitability = MOCK_PARCELS.filter((p) => p.suitabilityScore >= 88);
+  const pool = highSuitability.length > 0 ? highSuitability : MOCK_PARCELS;
+  const randomIndex = Math.floor(Math.random() * pool.length);
+  return pool[randomIndex];
 }

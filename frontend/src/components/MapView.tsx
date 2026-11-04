@@ -764,7 +764,7 @@ export const MapView: React.FC<MapViewProps> = ({
 
       {/* Leaflet Map Canvas */}
       <MapContainer
-        center={initialCenter}
+        center={targetCenter}
         zoom={selectedParcel ? 18 : 7}
         minZoom={6}
         maxZoom={19}

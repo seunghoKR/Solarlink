@@ -4,7 +4,14 @@ import type { Parcel } from './types/solar';
 import type { User } from './types/auth';
 import { searchAddressCoordinate } from './services/geocodingService';
 import { fetchRealCadastralByAddress } from './services/cadastralService';
-import { addRecentSearch, recordAuditLog, saveBookmark } from './services/saasStorage';
+import {
+  addRecentSearch,
+  recordAuditLog,
+  saveBookmark,
+  saveLastViewedParcel,
+  getLastViewedParcel,
+  getRandomFeaturedParcel,
+} from './services/saasStorage';
 import { Navbar } from './components/Navbar';
 import { FilterPanel, type FilterCriteria } from './components/FilterPanel';
 import { MapView } from './components/MapView';
@@ -27,6 +34,38 @@ export const App: React.FC = () => {
     }
   });
 
+  // 🌟 대표님 요청: 사용자가 로그인하거나 새로 접속했을 때 가장 최근 검색지를 기본값으로 열어주고, 항상 고정된 곳만 나오지 않게 처리!
+  const initialParcelState = useMemo(() => {
+    try {
+      const savedUser = localStorage.getItem(AUTH_STORAGE_KEY);
+      const user = savedUser ? JSON.parse(savedUser) : null;
+      const last = getLastViewedParcel(user?.id || 'guest');
+      return last || getRandomFeaturedParcel();
+    } catch {
+      return getRandomFeaturedParcel();
+    }
+  }, []);
+
+  // Global State
+  const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(initialParcelState);
+  const [customSearchedParcel, setCustomSearchedParcel] = useState<Parcel | null>(() => {
+    if (initialParcelState && (initialParcelState.id.startsWith('search_') || initialParcelState.id.startsWith('rc_'))) {
+      return initialParcelState;
+    }
+    return null;
+  });
+  const [searchQuery, setSearchQuery] = useState<string>(
+    initialParcelState && (initialParcelState.id.startsWith('search_') || initialParcelState.id.startsWith('rc_'))
+      ? initialParcelState.address
+      : ''
+  );
+  const [isVaultOpen, setIsVaultOpen] = useState(false);
+  const [isUserGuideOpen, setIsUserGuideOpen] = useState(false);
+  const [isReportOpen, setIsReportOpen] = useState(false);
+  const [bookmarkedParcels, setBookmarkedParcels] = useState<string[]>(['p1']);
+  const [showBookmarksOnly, setShowBookmarksOnly] = useState(false);
+  const [searchToast, setSearchToast] = useState<{ message: string; type: 'info' | 'success' } | null>(null);
+
   const handleLoginSuccess = (user: User) => {
     setCurrentUser(user);
     recordAuditLog(user, 'LOGIN', `${user.name} (${user.roleLabel}) 시스템 로그인 성공`);
@@ -35,6 +74,33 @@ export const App: React.FC = () => {
     } catch (e) {
       console.warn('LocalStorage 저장 실패:', e);
     }
+
+    // 🌟 대표님 요청: 로그인 시 해당 사용자의 가장 최근 검색지(부지)로 지도 기본값을 즉시 자동 이동!
+    const last = getLastViewedParcel(user.id);
+    if (last) {
+      setSelectedParcel(last);
+      if (last.id.startsWith('search_') || last.id.startsWith('rc_')) {
+        setCustomSearchedParcel(last);
+        setSearchQuery(last.address);
+      }
+      setSearchToast({
+        message: `📍 ${user.name}님의 가장 최근 검색지 [${last.address}]로 이동했습니다.`,
+        type: 'success',
+      });
+    } else {
+      // 해당 사용자의 이전 이력이 없다면, 항상 같은 고정된 곳이 아닌 전국 유망 추천 부지로 신선하게 안내
+      const featured = getRandomFeaturedParcel();
+      setSelectedParcel(featured);
+      saveLastViewedParcel(user.id, featured);
+      setSearchToast({
+        message: `✨ ${user.name}님 환영합니다! 오늘의 추천 부지 [${featured.address}]를 불러왔습니다.`,
+        type: 'info',
+      });
+    }
+
+    setTimeout(() => {
+      setSearchToast(null);
+    }, 4500);
   };
 
   const handleLogout = () => {
@@ -46,17 +112,6 @@ export const App: React.FC = () => {
       console.warn('LocalStorage 삭제 실패:', e);
     }
   };
-
-  // Global State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [customSearchedParcel, setCustomSearchedParcel] = useState<Parcel | null>(null);
-  const [selectedParcel, setSelectedParcel] = useState<Parcel | null>(MOCK_PARCELS[0]);
-  const [isVaultOpen, setIsVaultOpen] = useState(false);
-  const [isUserGuideOpen, setIsUserGuideOpen] = useState(false);
-  const [isReportOpen, setIsReportOpen] = useState(false);
-  const [bookmarkedParcels, setBookmarkedParcels] = useState<string[]>(['p1']);
-  const [showBookmarksOnly, setShowBookmarksOnly] = useState(false);
-  const [searchToast, setSearchToast] = useState<{ message: string; type: 'info' | 'success' } | null>(null);
 
   // 🌟 대표님 요청 2: 활성화된 필터 조건 상태 (검색 버튼 클릭 시에만 갱신)
   const [activeCriteria, setActiveCriteria] = useState<FilterCriteria>({
@@ -209,6 +264,7 @@ export const App: React.FC = () => {
       };
 
       setSelectedParcel(realParcel);
+      saveLastViewedParcel(currentUser?.id || 'guest', realParcel);
       addRecentSearch(trimmed, displayAddress, [lat, lng], currentUser?.id || 'guest');
       recordAuditLog(currentUser, 'SEARCH_ADDRESS', `국토부 실시간 지적도 매칭: ${trimmed} -> ${displayAddress} (PNU: ${pnuCode})`);
       return;
@@ -221,6 +277,7 @@ export const App: React.FC = () => {
 
     if (matched) {
       setSelectedParcel(matched);
+      saveLastViewedParcel(currentUser?.id || 'guest', matched);
       addRecentSearch(trimmed, matched.address, matched.coordinates, currentUser?.id || 'guest');
       recordAuditLog(currentUser, 'SEARCH_ADDRESS', `데이터베이스 매칭: ${trimmed} -> ${matched.address}`);
       return;
@@ -345,6 +402,7 @@ export const App: React.FC = () => {
 
     setCustomSearchedParcel(newParcel);
     setSelectedParcel(newParcel);
+    saveLastViewedParcel(currentUser?.id || 'guest', newParcel);
 
     // 알림창(alert)으로 흐름을 끊지 않고, 상단 토스트 배너로 자연스럽게 상태 설명!
     if (geo?.isParentFallback) {
@@ -373,6 +431,7 @@ export const App: React.FC = () => {
       addRecentSearch(parcel.address, parcel.address, parcel.coordinates, currentUser?.id || 'guest');
     }
     setSelectedParcel(parcel);
+    saveLastViewedParcel(currentUser?.id || 'guest', parcel);
     recordAuditLog(
       currentUser,
       'VIEW_PARCEL',
