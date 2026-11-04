@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import {
   MapContainer,
   TileLayer,
+  WMSTileLayer,
   Marker,
   Popup,
   Polygon,
@@ -76,8 +77,9 @@ export const MapView: React.FC<MapViewProps> = ({
 }) => {
   // Map Type: 'base' (일반지도) | 'satellite' (위성지도) | 'topo' (지형지도)
   const [mapMode, setMapMode] = useState<'base' | 'satellite' | 'topo'>('base');
-  const [showBuffers, setShowBuffers] = useState<boolean>(false); // 🌟 대표님 요청 1: 주소 검색 시 거대한 원이 가리지 않고 실제 부지 면적만 선명하게 표시
-  const [outlineOnly, setOutlineOnly] = useState<boolean>(true); // 🌟 대표님 요청: 위성 및 일반지도에서 내부가 훤히 보이도록 테두리 외곽선 위주 렌더링
+  const [showBuffers, setShowBuffers] = useState<boolean>(false);
+  const [outlineOnly, setOutlineOnly] = useState<boolean>(false); // 🌟 활성화 시 내부 투명, 비활성화 시 네이버 스타일 스카이블루 면적 채우기
+  const [showCadastral, setShowCadastral] = useState<boolean>(true); // 🌟 대표님 요청: 전국 연속지적도(지번 경계선) 레이어
   const [showGridLines, setShowGridLines] = useState<boolean>(true); // 🌟 대표님 요청: re100market 특화 한전 계통 연계선 및 변전소 시각화
   const [currentZoom, setCurrentZoom] = useState<number>(selectedParcel ? 16 : 7);
 
@@ -259,7 +261,20 @@ export const MapView: React.FC<MapViewProps> = ({
   const buildParcelFromRightClick = (data: ReverseGeocodeResult): Parcel => {
     const lat = data.lat;
     const lng = data.lng;
-    const pDelta = 0.0012;
+    const rLat = 0.0006 + Math.sqrt(data.estimatedPyeong / 5000) * 0.00045;
+    const rLng = 0.0007 + Math.sqrt(data.estimatedPyeong / 5000) * 0.00055;
+
+    // 8각 불규칙 지적도 형태 폴리곤 생성
+    const rightClickPolygon: [number, number][] = [];
+    const seed = Math.abs(Math.sin(lat * 1000 + lng * 2000) * 10000);
+    for (let v = 0; v < 8; v++) {
+      const angle = (v / 8) * Math.PI * 2;
+      const rVar = 0.75 + ((seed * (v + 1)) % 100) / 200;
+      rightClickPolygon.push([
+        parseFloat((lat + Math.sin(angle) * rLat * rVar).toFixed(6)),
+        parseFloat((lng + Math.cos(angle) * rLng * rVar).toFixed(6)),
+      ]);
+    }
 
     return {
       id: `rc_${Date.now()}`,
@@ -274,12 +289,7 @@ export const MapView: React.FC<MapViewProps> = ({
       zoning: (data.zoning as any) || '계획관리지역',
       officialPrice: 32000,
       coordinates: [lat, lng],
-      polygon: [
-        [lat + pDelta, lng - pDelta],
-        [lat + pDelta * 1.1, lng + pDelta * 1.2],
-        [lat - pDelta, lng + pDelta * 1.1],
-        [lat - pDelta * 1.05, lng - pDelta],
-      ],
+      polygon: rightClickPolygon,
       slopeDegree: data.slopeDegree,
       aspect: '정남향 (180°)',
       suitability: data.suitability,
@@ -502,6 +512,18 @@ export const MapView: React.FC<MapViewProps> = ({
             />
             <span className="text-xs">필지 테두리 외곽선만 표시 (내부 투명)</span>
           </label>
+          <label className="flex items-center space-x-2 text-emerald-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showCadastral}
+              onChange={() => setShowCadastral(!showCadastral)}
+              className="accent-emerald-500 rounded cursor-pointer"
+            />
+            <span className="text-xs flex items-center space-x-1 font-semibold">
+              <span>🗺️ 국토부 연속지적도</span>
+              <span className="text-slate-300 font-normal">(전국 지번선)</span>
+            </span>
+          </label>
           <label className="flex items-center space-x-2 text-slate-300 cursor-pointer">
             <input
               type="checkbox"
@@ -597,6 +619,27 @@ export const MapView: React.FC<MapViewProps> = ({
             subdomains={['a', 'b', 'c']}
             maxNativeZoom={17}
             maxZoom={19}
+          />
+        )}
+
+        {/* 4. 국토교통부 공식 연속지적도(WMS) 레이어 - 전국 모든 필지의 지번 경계선 오버레이 */}
+        {showCadastral && (
+          <WMSTileLayer
+            url="https://api.vworld.kr/req/wms"
+            params={
+              {
+                service: 'WMS',
+                request: 'GetMap',
+                version: '1.3.0',
+                layers: 'lt_c_landinfobasemap',
+                styles: 'lt_c_landinfobasemap',
+                format: 'image/png',
+                transparent: true,
+                key: VWORLD_KEY,
+              } as any
+            }
+            opacity={0.8}
+            zIndex={400}
           />
         )}
 
@@ -804,7 +847,7 @@ export const MapView: React.FC<MapViewProps> = ({
                 pathOptions={{
                   color: isSelected ? '#2563eb' : '#38bdf8',
                   fillColor: isSelected ? '#60a5fa' : '#0284c7',
-                  fillOpacity: isSelected ? 0.35 : outlineOnly || mapMode === 'satellite' ? 0.02 : 0.06,
+                  fillOpacity: outlineOnly ? 0 : isSelected ? 0.35 : 0.08,
                   weight: isSelected ? 2.8 : 1.8,
                 }}
                 eventHandlers={{
