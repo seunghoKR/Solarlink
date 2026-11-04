@@ -74,7 +74,7 @@ const MapEventHandler: React.FC<{
   return null;
 };
 
-// 🌟 대표님 요청: 국토부 연속지적도가 켜져 있을 때 지적도가 절대 사라지지 않도록 최소 줌(17.5x) 락 & 18.0x 자동 줌인
+// 🌟 대표님 요청: 국토부 연속지적도가 켜져 있을 때 지적도가 절대 사라지지 않도록 18.0x 자동 줌인 & 최소 줌(17.5x) 락
 const CadastralZoomController: React.FC<{
   showCadastral: boolean;
   onZoomChange: (zoom: number) => void;
@@ -84,12 +84,12 @@ const CadastralZoomController: React.FC<{
   useEffect(() => {
     try {
       if (showCadastral) {
-        map.setMinZoom(17.5);
-        map.setMaxZoom(19);
         if (map.getZoom() < 17.5) {
-          map.setZoom(18.0, { animate: true });
+          map.setZoom(18.0, { animate: false });
           onZoomChange(18.0);
         }
+        map.setMinZoom(17.5);
+        map.setMaxZoom(19);
       } else {
         map.setMinZoom(6);
         map.setMaxZoom(19);
@@ -766,7 +766,7 @@ export const MapView: React.FC<MapViewProps> = ({
       <MapContainer
         center={initialCenter}
         zoom={selectedParcel ? 18 : 7}
-        minZoom={showCadastral ? 17.5 : 6}
+        minZoom={6}
         maxZoom={19}
         className="w-full h-full"
         zoomControl={false}
@@ -849,7 +849,6 @@ export const MapView: React.FC<MapViewProps> = ({
                 styles: 'lt_c_landinfobasemap',
                 format: 'image/png',
                 transparent: true,
-                crs: 'EPSG:3857',
                 key: VWORLD_KEY,
                 domain: 're100life.com',
               } as any
