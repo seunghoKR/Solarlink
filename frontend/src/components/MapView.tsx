@@ -382,7 +382,7 @@ export const MapView: React.FC<MapViewProps> = ({
   const targetCenter: [number, number] = selectedParcel
     ? selectedParcel.coordinates
     : initialCenter;
-  const targetZoom = selectedParcel ? 16 : 7;
+  const targetZoom = selectedParcel ? 17 : 7;
 
   // 대량 3,900건 렌더링 성능 최적화: 지도에는 상위 150건 + 선택된 필지를 우선 렌더링
   const mapRenderParcels = React.useMemo(() => {
@@ -798,14 +798,14 @@ export const MapView: React.FC<MapViewProps> = ({
                 </Popup>
               </Marker>
 
-              {/* 필지 외곽 경계 폴리곤 (대표님 요청: 위성지도 등에서 지도가 훤히 보이도록 테두리 강조 및 내부 투명화) */}
+              {/* 필지 외곽 경계 폴리곤 (네이버 지도 스타일의 선명한 주소지 영역 하이라이트) */}
               <Polygon
                 positions={parcel.polygon}
                 pathOptions={{
-                  color: isSelected ? '#f59e0b' : '#38bdf8',
-                  fillColor: isSelected ? '#f59e0b' : '#0284c7',
-                  fillOpacity: outlineOnly || mapMode === 'satellite' ? 0.02 : isSelected ? 0.08 : 0.03,
-                  weight: isSelected ? 3.5 : 2,
+                  color: isSelected ? '#2563eb' : '#38bdf8',
+                  fillColor: isSelected ? '#60a5fa' : '#0284c7',
+                  fillOpacity: isSelected ? 0.35 : outlineOnly || mapMode === 'satellite' ? 0.02 : 0.06,
+                  weight: isSelected ? 2.8 : 1.8,
                 }}
                 eventHandlers={{
                   click: () => onSelectParcel(parcel),
