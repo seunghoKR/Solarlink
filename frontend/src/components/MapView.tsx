@@ -185,11 +185,65 @@ export const MapView: React.FC<MapViewProps> = ({
     });
   };
 
+  // 부지 직접 우클릭 또는 근접 부지 감지 시 바로 해당 필지 데이터 매핑
+  const handleParcelRightClick = (parcel: Parcel, lat?: number, lng?: number) => {
+    const targetLat = lat ?? parcel.coordinates[0];
+    const targetLng = lng ?? parcel.coordinates[1];
+    setRightClickPos([targetLat, targetLng]);
+    setRightClickLoading(false);
+    setRightClickData({
+      address: parcel.address,
+      roadAddress: parcel.address,
+      parcelAddress: parcel.address,
+      pnu: parcel.pnu,
+      sido: parcel.sido,
+      sigungu: parcel.sigungu,
+      bjdong: parcel.bjdong,
+      lat: parcel.coordinates[0],
+      lng: parcel.coordinates[1],
+      landCategory: parcel.landCategory,
+      estimatedPyeong: parcel.areaPyeong,
+      estimatedSqm: parcel.areaSqm,
+      zoning: parcel.zoning,
+      slopeDegree: parcel.slopeDegree,
+      suitability: parcel.suitability,
+      suitabilityScore: parcel.suitabilityScore,
+      gridCapacityMw: parcel.grid?.availableCapacityMw ?? 1.5,
+    });
+    onSelectParcel(parcel);
+  };
+
   // 우클릭 핸들러: 실시간 역지오코딩 호출
   const handleMapRightClick = async (lat: number, lng: number) => {
     setRightClickPos([lat, lng]);
     setRightClickLoading(true);
     setRightClickData(null);
+
+    // 🌟 대표님 버그 해결: 만약 우클릭한 위치가 선택된 부지(selectedParcel) 근처이거나,
+    // 기존 parcels 목록 중 반경 350m 이내에 있는 부지라면
+    // 엉뚱한 난수 역지오코딩을 실행하지 않고, 해당 Parcel의 실제 등록 정보(주소, 지목, 면적 등)를 100% 일치시켜 팝업 표시!
+    let matchedParcel: Parcel | null = null;
+    if (selectedParcel) {
+      const d = Math.hypot(selectedParcel.coordinates[0] - lat, selectedParcel.coordinates[1] - lng);
+      if (d < 0.0035) { // 약 350m
+        matchedParcel = selectedParcel;
+      }
+    }
+    if (!matchedParcel && parcels && parcels.length > 0) {
+      let minDist = 999999;
+      for (const p of parcels) {
+        const d = Math.hypot(p.coordinates[0] - lat, p.coordinates[1] - lng);
+        if (d < 0.003 && d < minDist) {
+          minDist = d;
+          matchedParcel = p;
+        }
+      }
+    }
+
+    if (matchedParcel) {
+      handleParcelRightClick(matchedParcel, lat, lng);
+      return;
+    }
 
     try {
       const result = await reverseGeocodeCoordinate(lat, lng);
@@ -699,6 +753,10 @@ export const MapView: React.FC<MapViewProps> = ({
                 icon={createParcelIcon(parcel, isSelected)}
                 eventHandlers={{
                   click: () => onSelectParcel(parcel),
+                  contextmenu: (e) => {
+                    e.originalEvent?.preventDefault();
+                    handleParcelRightClick(parcel, e.latlng.lat, e.latlng.lng);
+                  },
                 }}
               >
                 <Popup>
@@ -751,6 +809,10 @@ export const MapView: React.FC<MapViewProps> = ({
                 }}
                 eventHandlers={{
                   click: () => onSelectParcel(parcel),
+                  contextmenu: (e) => {
+                    e.originalEvent?.preventDefault();
+                    handleParcelRightClick(parcel, e.latlng.lat, e.latlng.lng);
+                  },
                 }}
               />
 

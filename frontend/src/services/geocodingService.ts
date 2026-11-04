@@ -18,6 +18,8 @@ export interface GeocodeResult {
   originalQuery?: string;
 }
 
+import type { SuitabilityStatus } from '../types/solar';
+
 export interface ReverseGeocodeResult {
   address: string;
   roadAddress?: string;
@@ -33,7 +35,7 @@ export interface ReverseGeocodeResult {
   estimatedSqm: number;
   zoning: string;
   slopeDegree: number;
-  suitability: '예비적합' | '조건부' | '제한';
+  suitability: SuitabilityStatus;
   suitabilityScore: number;
   gridCapacityMw: number;
 }
@@ -290,7 +292,38 @@ export async function reverseGeocodeCoordinate(
     }
   }
 
-  // 2-C. 스마트 위치 지리좌표 매핑 엔진 (위도/경도로 절대 안 빠지도록 100% 한글 주소 보장!)
+  // 2-C. OpenStreetMap Nominatim 정밀 역지오코딩 2차 폴백 (브라우저 CORS 허용, 한국어 리/도로명 실시간 추출)
+  if (!parcelAddr && !roadAddr) {
+    try {
+      const osmUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=ko`;
+      const osmRes = await fetch(osmUrl, {
+        headers: {
+          'Accept-Language': 'ko,en',
+        },
+      });
+      if (osmRes.ok) {
+        const osmData = await osmRes.json();
+        const addrObj = osmData?.address;
+        if (addrObj) {
+          sido = addrObj.province || addrObj.state || sido;
+          sigungu = addrObj.county || addrObj.city || addrObj.borough || sigungu;
+          bjdong = addrObj.village || addrObj.suburb || addrObj.town || addrObj.quarter || bjdong;
+          const road = addrObj.road || '';
+
+          if (road) {
+            roadAddr = `${sido} ${sigungu} ${bjdong} ${road}`.replace(/\s+/g, ' ').trim();
+          }
+          if (bjdong) {
+            parcelAddr = `${sido} ${sigungu} ${bjdong} 일원`.replace(/\s+/g, ' ').trim();
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Nominatim 역지오코딩 실패:', err);
+    }
+  }
+
+  // 2-D. 최후 지리좌표 매핑 엔진 (가상 난수 지번 생성 없이 정직한 행정동 명칭 표기)
   if (!parcelAddr && !roadAddr) {
     let closest = REGION_CENTERS[0];
     let minDistance = 999999;
@@ -305,12 +338,8 @@ export async function reverseGeocodeCoordinate(
     sido = closest.sido;
     sigungu = closest.sigungu;
     bjdong = closest.bjdong;
-
-    const seedVal = Math.abs(Math.sin(lat * 1234 + lng * 5678) * 10000);
-    const bunji1 = Math.floor(10 + (seedVal % 890));
-    const bunji2 = Math.floor(1 + ((seedVal * 3) % 25));
-    parcelAddr = `${closest.sido} ${closest.sigungu} ${closest.bjdong} ${bunji1}-${bunji2}`;
-    pnu = `${closest.code}${Math.floor(100000000000000 + (seedVal % 899999999999999))}`;
+    parcelAddr = `${closest.sido} ${closest.sigungu} ${closest.bjdong} 일원`;
+    pnu = `${closest.code}0000000000`;
   }
 
   // 좌표 해시 기반 일관된 지목 및 평수 시뮬레이션 계산
