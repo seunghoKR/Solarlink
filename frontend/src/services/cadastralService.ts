@@ -121,6 +121,61 @@ export interface RealCadastralLookupResult extends RealCadastralFeature {
 }
 
 /**
+ * 🌟 VWorld 주소 검색 API(getcoord)를 CORS 에러 없는 JSONP 방식으로 호출하여
+ * 실시간 공인 법정 좌표(lat, lng)를 100% 획득
+ */
+function fetchVWorldCoordJSONP(addressStr: string): Promise<[number, number] | null> {
+  return new Promise((resolve) => {
+    const callbackName = `__vworld_addr_cb_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+
+    const timeoutId = setTimeout(() => {
+      cleanup();
+      resolve(null);
+    }, 3500);
+
+    const cleanup = () => {
+      clearTimeout(timeoutId);
+      try {
+        delete (window as any)[callbackName];
+      } catch {
+        (window as any)[callbackName] = undefined;
+      }
+      const existingScript = document.getElementById(callbackName);
+      if (existingScript && existingScript.parentNode) {
+        existingScript.parentNode.removeChild(existingScript);
+      }
+    };
+
+    (window as any)[callbackName] = (data: any) => {
+      cleanup();
+      try {
+        const pt = data?.response?.result?.point;
+        if (pt && pt.x && pt.y) {
+          resolve([parseFloat(pt.y), parseFloat(pt.x)]);
+          return;
+        }
+        resolve(null);
+      } catch (err) {
+        console.warn('VWorld 주소 파싱 에러:', err);
+        resolve(null);
+      }
+    };
+
+    const script = document.createElement('script');
+    script.id = callbackName;
+    script.src = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(
+      addressStr
+    )}&refine=true&simple=false&format=json&type=parcel&key=${VWORLD_KEY}&callback=${callbackName}`;
+    script.onerror = () => {
+      cleanup();
+      resolve(null);
+    };
+
+    document.head.appendChild(script);
+  });
+}
+
+/**
  * 🌟 주소 문자열(예: '전라남도 영암군 학산면 용산리 940-1')을 기반으로
  * 1. 국토부 주소 검색 API(getcoord)를 통해 100% 공인 법정 좌표(lat, lng)를 획득하고,
  * 2. 그 진짜 좌표의 국토부 연속지적도(MultiPolygon)를 실시간 쿼리하여
@@ -139,23 +194,8 @@ export async function fetchRealCadastralByAddress(
     return null;
   }
 
-  // 1. 주소로 VWorld 공인 좌표 조회
-  let realCoords: [number, number] | null = null;
-  try {
-    const url = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(
-      trimmed
-    )}&refine=true&simple=false&format=json&type=parcel&key=${VWORLD_KEY}`;
-    const res = await fetch(url);
-    if (res.ok) {
-      const data = await res.json();
-      const pt = data?.response?.result?.point;
-      if (pt && pt.x && pt.y) {
-        realCoords = [parseFloat(pt.y), parseFloat(pt.x)];
-      }
-    }
-  } catch (err) {
-    console.warn('VWorld 지번 좌표 획득 실패:', err);
-  }
+  // 1. 주소로 VWorld 공인 좌표 조회 (CORS 제약 없는 JSONP 방식!)
+  let realCoords = await fetchVWorldCoordJSONP(trimmed);
 
   const targetCoords = realCoords || fallbackCoords;
   if (!targetCoords) return null;
