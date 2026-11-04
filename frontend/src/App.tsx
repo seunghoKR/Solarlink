@@ -124,6 +124,7 @@ export const App: React.FC = () => {
   });
 
   const handleApplyCriteria = (criteria: FilterCriteria) => {
+    setShowBookmarksOnly(false); // 🌟 대표님 검색 실행 시 관심부지 필터 락을 해제하고 전체 3,921건 풀 검색으로 안전 전환
     setActiveCriteria(criteria);
     recordAuditLog(
       currentUser,
@@ -451,6 +452,10 @@ export const App: React.FC = () => {
 
   // 🌟 대표님 요청 2: 활성화된 필터 조건에 따른 수천 건 필터링 엔진
   const filteredParcels = useMemo(() => {
+    const minP = Number(activeCriteria.minPyeong) || 0;
+    const maxP = Number(activeCriteria.maxPyeong) || 0;
+    const minCap = Number(activeCriteria.minGridCapacity) || 0;
+
     return allParcelsPool.filter((p) => {
       // 관심 부지만 보기 필터
       if (showBookmarksOnly && !bookmarkedParcels.includes(p.id)) {
@@ -458,11 +463,11 @@ export const App: React.FC = () => {
       }
 
       // 평수 범위 필터
-      if (p.areaPyeong < activeCriteria.minPyeong || p.areaPyeong > activeCriteria.maxPyeong) {
+      if (p.areaPyeong < minP || (maxP > 0 && p.areaPyeong > maxP)) {
         return false;
       }
 
-      // 지목 필터
+      // 지목 필터 (지목이 선택되어 있으면 해당 지목만 통과)
       if (
         activeCriteria.selectedCategories.length > 0 &&
         !activeCriteria.selectedCategories.includes(p.landCategory)
@@ -476,7 +481,7 @@ export const App: React.FC = () => {
       }
 
       // 한전 변전소 여유용량 필터
-      if (p.grid.availableCapacityMw < activeCriteria.minGridCapacity) {
+      if (minCap > 0 && (p.grid?.availableCapacityMw || 0) < minCap) {
         return false;
       }
 
@@ -506,6 +511,7 @@ export const App: React.FC = () => {
           }
         }}
         onOpenBookmarks={() => setShowBookmarksOnly((prev) => !prev)}
+        showBookmarksOnly={showBookmarksOnly}
         onOpenUserGuide={() => setIsUserGuideOpen(true)}
         bookmarkCount={bookmarkedParcels.length}
       />
@@ -542,6 +548,8 @@ export const App: React.FC = () => {
           activeCriteria={activeCriteria}
           onApplyCriteria={handleApplyCriteria}
           onResetFilters={handleResetFilters}
+          showBookmarksOnly={showBookmarksOnly}
+          onDisableBookmarksOnly={() => setShowBookmarksOnly(false)}
         />
 
         {/* Center Interactive GIS Map Canvas */}

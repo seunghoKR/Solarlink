@@ -9,6 +9,7 @@ import {
   RotateCcw,
   Search,
   Check,
+  Bookmark,
 } from 'lucide-react';
 
 export interface FilterCriteria {
@@ -28,6 +29,8 @@ interface FilterPanelProps {
   activeCriteria: FilterCriteria;
   onApplyCriteria: (criteria: FilterCriteria) => void;
   onResetFilters: () => void;
+  showBookmarksOnly?: boolean;
+  onDisableBookmarksOnly?: () => void;
 }
 
 const ALL_CATEGORIES: LandCategory[] = [
@@ -58,8 +61,10 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
   activeCriteria,
   onApplyCriteria,
   onResetFilters,
+  showBookmarksOnly = false,
+  onDisableBookmarksOnly,
 }) => {
-  // 사용자가 버튼을 누르기 전까지 편집할 수 있는 내부 초안(Draft) 상태
+  // 사용자가 버튼을 누르거나 조작할 수 있는 내부 초안(Draft) 상태
   const [draftMinPyeong, setDraftMinPyeong] = useState<number>(activeCriteria.minPyeong);
   const [draftMaxPyeong, setDraftMaxPyeong] = useState<number>(activeCriteria.maxPyeong);
   const [draftCategories, setDraftCategories] = useState<LandCategory[]>(activeCriteria.selectedCategories);
@@ -70,20 +75,31 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
   // 리스트 표시 개수 제한 (브라우저 스크롤 60fps 고속 유지)
   const [displayLimit, setDisplayLimit] = useState<number>(60);
 
+  // 🌟 대표님 요청: 지목 토글 시 실시간으로 즉시 필터링 반영 + 검색 버튼으로도 언제든 확정 가능!
   const handleToggleCategory = (category: LandCategory) => {
-    setDraftCategories((prev) =>
-      prev.includes(category) ? prev.filter((c) => c !== category) : [...prev, category]
-    );
+    const nextCategories = draftCategories.includes(category)
+      ? draftCategories.filter((c) => c !== category)
+      : [...draftCategories, category];
+    setDraftCategories(nextCategories);
+    onApplyCriteria({
+      minPyeong: Number(draftMinPyeong) || 0,
+      maxPyeong: Number(draftMaxPyeong) || 100000,
+      selectedCategories: nextCategories,
+      selectedZoning: draftZoning,
+      minGridCapacity: Number(draftMinGrid) || 0,
+      strictRegulationOnly: draftStrictRegulation,
+    });
+    setDisplayLimit(60);
   };
 
   const handleExecuteSearch = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     onApplyCriteria({
-      minPyeong: draftMinPyeong,
-      maxPyeong: draftMaxPyeong,
+      minPyeong: Number(draftMinPyeong) || 0,
+      maxPyeong: Number(draftMaxPyeong) || 100000,
       selectedCategories: draftCategories,
       selectedZoning: draftZoning,
-      minGridCapacity: draftMinGrid,
+      minGridCapacity: Number(draftMinGrid) || 0,
       strictRegulationOnly: draftStrictRegulation,
     });
     setDisplayLimit(60);
@@ -119,6 +135,23 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
           <span>초기화</span>
         </button>
       </div>
+
+      {/* 🌟 대표님 관심 부지 모아보기 활성화 시 명확한 상태 안내 배너 */}
+      {showBookmarksOnly && (
+        <div className="m-3 p-2.5 rounded-lg bg-amber-500/15 border border-amber-500/40 flex items-center justify-between text-xs text-amber-300 animate-in fade-in">
+          <div className="flex items-center space-x-1.5 min-w-0">
+            <Bookmark className="w-3.5 h-3.5 fill-amber-400 text-amber-400 shrink-0" />
+            <span className="font-bold truncate">관심 후보만 모아보기 중</span>
+          </div>
+          <button
+            type="button"
+            onClick={onDisableBookmarksOnly || handleReset}
+            className="px-2 py-0.5 rounded bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-[11px] transition cursor-pointer shrink-0 ml-2"
+          >
+            전체 부지 보기
+          </button>
+        </div>
+      )}
 
       {/* 2. Scrollable Condition Controls Form */}
       <form onSubmit={handleExecuteSearch} className="flex flex-col flex-1 overflow-hidden">
@@ -261,11 +294,25 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
         {/* 5. Candidate List Items */}
         <div className="flex-1 overflow-y-auto divide-y divide-slate-800/80">
           {parcels.length === 0 ? (
-            <div className="p-6 text-center text-slate-500 text-xs">
+            <div className="p-6 text-center text-slate-400 text-xs">
               <Search className="w-8 h-8 mx-auto mb-2 opacity-30 text-amber-400" />
-              설정하신 조건에 부합하는 후보지가 없습니다.
-              <br />
-              평수나 계통 조건을 완화한 후 다시 검색해 보세요.
+              <p className="font-semibold text-slate-200 mb-1">
+                {showBookmarksOnly
+                  ? '관심 후보로 등록된 부지가 없습니다.'
+                  : '설정하신 조건에 부합하는 후보지가 없습니다.'}
+              </p>
+              <p className="text-[11px] text-slate-400 mb-3">
+                {showBookmarksOnly
+                  ? '관심 후보 모아보기를 해제하거나 조건을 완화해 보세요.'
+                  : '평수나 계통 조건을 완화하거나 필터를 초기화해 보세요.'}
+              </p>
+              <button
+                type="button"
+                onClick={handleReset}
+                className="px-3.5 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold transition cursor-pointer active:scale-95 shadow-sm"
+              >
+                필터 전체 초기화 (전국 {totalPoolCount.toLocaleString()}건 보기)
+              </button>
             </div>
           ) : (
             <>

@@ -28,6 +28,7 @@ interface NavbarProps {
   onSearchSubmit: (queryOverride?: string) => void;
   onOpenVault: () => void;
   onOpenBookmarks: () => void;
+  showBookmarksOnly?: boolean;
   onOpenUserGuide: () => void;
   bookmarkCount: number;
 }
@@ -40,6 +41,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSearchSubmit,
   onOpenVault,
   onOpenBookmarks,
+  showBookmarksOnly = false,
   onOpenUserGuide,
   bookmarkCount,
 }) => {
@@ -267,12 +269,21 @@ export const Navbar: React.FC<NavbarProps> = ({
         {/* Bookmarks Button */}
         <button
           onClick={onOpenBookmarks}
-          className="flex items-center space-x-1.5 px-3 py-1.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition cursor-pointer"
+          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded text-xs font-semibold border transition cursor-pointer ${
+            showBookmarksOnly
+              ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md shadow-amber-500/25'
+              : 'bg-slate-800 hover:bg-slate-700 text-slate-200 border-slate-700'
+          }`}
+          title={showBookmarksOnly ? '전체 부지 보기로 전환' : '관심 부지만 모아보기'}
         >
-          <Bookmark className="w-3.5 h-3.5 text-amber-400" />
-          <span>관심 후보</span>
+          <Bookmark className={`w-3.5 h-3.5 ${showBookmarksOnly ? 'fill-slate-950 text-slate-950' : 'text-amber-400'}`} />
+          <span>{showBookmarksOnly ? '관심 후보만 보는 중' : '관심 후보'}</span>
           {bookmarkCount > 0 && (
-            <span className="bg-amber-500 text-slate-950 font-bold px-1.5 py-0.2 rounded-full text-[10px]">
+            <span
+              className={`font-bold px-1.5 py-0.2 rounded-full text-[10px] ${
+                showBookmarksOnly ? 'bg-slate-950 text-amber-400' : 'bg-amber-500 text-slate-950'
+              }`}
+            >
               {bookmarkCount}
             </span>
           )}
