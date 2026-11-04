@@ -161,6 +161,21 @@ export const MapView: React.FC<MapViewProps> = ({
   const [showCadastral, setShowCadastral] = useState<boolean>(true); // 🌟 대표님 요청: 전국 연속지적도(지번 경계선) 레이어
   const [showGridLines, setShowGridLines] = useState<boolean>(true); // 🌟 대표님 요청: re100market 특화 한전 계통 연계선 및 변전소 시각화
   const [currentZoom, setCurrentZoom] = useState<number>(selectedParcel ? 16 : 7);
+  const mapRef = useRef<L.Map | null>(null);
+
+  // 🌟 대표님 요청: 국토부 연속지적도 토글 시, 지적도가 가장 선명하게 보이는 최적 확대 상태(16.5x)로 자동 줌인!
+  const handleToggleCadastral = () => {
+    const nextState = !showCadastral;
+    setShowCadastral(nextState);
+
+    if (nextState && mapRef.current) {
+      const zoom = mapRef.current.getZoom();
+      if (zoom < 16) {
+        mapRef.current.setZoom(16.5, { animate: true });
+        setCurrentZoom(16.5);
+      }
+    }
+  };
 
   // 우클릭 컨텍스트 팝업 상태
   const [rightClickPos, setRightClickPos] = useState<[number, number] | null>(null);
@@ -661,7 +676,7 @@ export const MapView: React.FC<MapViewProps> = ({
             <input
               type="checkbox"
               checked={showCadastral}
-              onChange={() => setShowCadastral(!showCadastral)}
+              onChange={handleToggleCadastral}
               className="accent-emerald-500 rounded cursor-pointer"
             />
             <span className="text-xs flex items-center space-x-1 font-semibold">
@@ -729,6 +744,7 @@ export const MapView: React.FC<MapViewProps> = ({
 
       {/* Leaflet Map Canvas */}
       <MapContainer
+        ref={mapRef}
         center={initialCenter}
         zoom={7}
         className="w-full h-full"
@@ -811,9 +827,9 @@ export const MapView: React.FC<MapViewProps> = ({
             }
             minZoom={14}
             maxZoom={19}
-            updateWhenIdle={true}
-            updateWhenZooming={false}
-            keepBuffer={8}
+            updateWhenIdle={false}
+            updateWhenZooming={true}
+            keepBuffer={12}
             opacity={0.88}
             zIndex={400}
           />
