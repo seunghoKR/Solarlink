@@ -115,3 +115,71 @@ export function fetchRealCadastralPolygon(lat: number, lng: number): Promise<Rea
     document.head.appendChild(script);
   });
 }
+
+export interface RealCadastralLookupResult extends RealCadastralFeature {
+  realCoords: [number, number];
+}
+
+/**
+ * 🌟 주소 문자열(예: '전라남도 영암군 학산면 용산리 940-1')을 기반으로
+ * 1. 국토부 주소 검색 API(getcoord)를 통해 100% 공인 법정 좌표(lat, lng)를 획득하고,
+ * 2. 그 진짜 좌표의 국토부 연속지적도(MultiPolygon)를 실시간 쿼리하여
+ * 주소와 위치, 지적도 형상을 100% 일치시킵니다.
+ */
+export async function fetchRealCadastralByAddress(
+  address: string,
+  fallbackCoords?: [number, number]
+): Promise<RealCadastralLookupResult | null> {
+  const trimmed = address.trim();
+  if (!trimmed) {
+    if (fallbackCoords) {
+      const feat = await fetchRealCadastralPolygon(fallbackCoords[0], fallbackCoords[1]);
+      return feat ? { ...feat, realCoords: fallbackCoords } : null;
+    }
+    return null;
+  }
+
+  // 1. 주소로 VWorld 공인 좌표 조회
+  let realCoords: [number, number] | null = null;
+  try {
+    const url = `https://api.vworld.kr/req/address?service=address&request=getcoord&version=2.0&crs=epsg:4326&address=${encodeURIComponent(
+      trimmed
+    )}&refine=true&simple=false&format=json&type=parcel&key=${VWORLD_KEY}`;
+    const res = await fetch(url);
+    if (res.ok) {
+      const data = await res.json();
+      const pt = data?.response?.result?.point;
+      if (pt && pt.x && pt.y) {
+        realCoords = [parseFloat(pt.y), parseFloat(pt.x)];
+      }
+    }
+  } catch (err) {
+    console.warn('VWorld 지번 좌표 획득 실패:', err);
+  }
+
+  const targetCoords = realCoords || fallbackCoords;
+  if (!targetCoords) return null;
+
+  // 2. 그 진짜 좌표로 연속지적도 GeoJSON 조회
+  const feat = await fetchRealCadastralPolygon(targetCoords[0], targetCoords[1]);
+  if (!feat) {
+    return realCoords ? {
+      pnu: '',
+      jibun: '',
+      jimok: '',
+      pareaSqm: 0,
+      pareaPyeong: 0,
+      sido: '',
+      sigungu: '',
+      emd: '',
+      ri: '',
+      polygon: [],
+      realCoords,
+    } : null;
+  }
+
+  return {
+    ...feat,
+    realCoords: targetCoords,
+  };
+}

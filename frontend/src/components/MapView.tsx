@@ -14,7 +14,7 @@ import {
 import L from 'leaflet';
 import type { Parcel, RegionSummary } from '../types/solar';
 import { reverseGeocodeCoordinate, type ReverseGeocodeResult } from '../services/geocodingService';
-import { fetchRealCadastralPolygon } from '../services/cadastralService';
+import { fetchRealCadastralPolygon, fetchRealCadastralByAddress } from '../services/cadastralService';
 import {
   Sparkles,
   MapPin,
@@ -33,7 +33,7 @@ interface MapViewProps {
 
 const VWORLD_KEY = import.meta.env.VITE_VWORLD_API_KEY || 'E810A4B0-5AFE-4FF7-9E1F-2B905CFAD2B7';
 
-// 지도 포커스 이동 전용 훅 (선택된 필지 ID가 변경될 때만 부드럽게 이동하여 마우스 휠 줌 충돌 방지)
+// 지도 포커스 이동 전용 훅 (선택된 필지 또는 공인 좌표 변경 시 부드럽게 이동)
 const MapRecenter: React.FC<{
   targetId: string | null;
   center: [number, number];
@@ -41,11 +41,16 @@ const MapRecenter: React.FC<{
 }> = ({ targetId, center, zoom }) => {
   const map = useMap();
   const lastTargetIdRef = useRef<string | null>(null);
+  const lastCenterRef = useRef<[number, number] | null>(null);
 
   useEffect(() => {
-    if (targetId && targetId !== lastTargetIdRef.current) {
+    const isNewTarget = targetId && targetId !== lastTargetIdRef.current;
+    const isCoordChanged = center && (!lastCenterRef.current || Math.hypot(center[0] - lastCenterRef.current[0], center[1] - lastCenterRef.current[1]) > 0.0001);
+
+    if (targetId && (isNewTarget || isCoordChanged)) {
       lastTargetIdRef.current = targetId;
-      map.flyTo(center, zoom, { duration: 1.0 });
+      lastCenterRef.current = center;
+      map.flyTo(center, zoom, { duration: 0.8 });
     }
   }, [targetId, center, zoom, map]);
 
@@ -163,26 +168,33 @@ export const MapView: React.FC<MapViewProps> = ({
   const [rightClickData, setRightClickData] = useState<ReverseGeocodeResult | null>(null);
   // 🌟 대표님 브이월드 승인키 연동: 국토부 공인 실시간 연속지적도(MultiPolygon) 상태
   const [selectedRealPolygon, setSelectedRealPolygon] = useState<[number, number][] | null>(null);
+  const [selectedRealCoord, setSelectedRealCoord] = useState<[number, number] | null>(null);
   const [rightClickRealPolygon, setRightClickRealPolygon] = useState<[number, number][] | null>(null);
 
-  // 🌟 선택된 부지의 실제 국토부 연속지적도 폴리곤을 실시간 쿼리
+  // 🌟 선택된 부지의 주소를 기반으로 실제 국토부 공인 법정 좌표 및 진짜 연속지적도 폴리곤을 실시간 동기화
   useEffect(() => {
     if (!selectedParcel) {
       setSelectedRealPolygon(null);
+      setSelectedRealCoord(null);
       return;
     }
 
     let isMounted = true;
-    fetchRealCadastralPolygon(selectedParcel.coordinates[0], selectedParcel.coordinates[1]).then((feat) => {
-      if (isMounted && feat && feat.polygon && feat.polygon.length >= 3) {
-        setSelectedRealPolygon(feat.polygon);
+    fetchRealCadastralByAddress(selectedParcel.address, selectedParcel.coordinates).then((res) => {
+      if (isMounted && res) {
+        if (res.polygon && res.polygon.length >= 3) {
+          setSelectedRealPolygon(res.polygon);
+        }
+        if (res.realCoords) {
+          setSelectedRealCoord(res.realCoords);
+        }
       }
     });
 
     return () => {
       isMounted = false;
     };
-  }, [selectedParcel?.id, selectedParcel?.coordinates]);
+  }, [selectedParcel?.id, selectedParcel?.address, selectedParcel?.coordinates]);
 
   // 커스텀 시도 카운트 버블 아이콘
   const createRegionIcon = (region: RegionSummary) => {
@@ -516,7 +528,7 @@ export const MapView: React.FC<MapViewProps> = ({
 
   const initialCenter: [number, number] = [36.0, 127.8];
   const targetCenter: [number, number] = selectedParcel
-    ? selectedParcel.coordinates
+    ? (selectedRealCoord || selectedParcel.coordinates)
     : initialCenter;
   const targetZoom = selectedParcel ? 17 : 7;
 
@@ -971,7 +983,7 @@ export const MapView: React.FC<MapViewProps> = ({
             <React.Fragment key={parcel.id}>
               {/* 필지 마커 */}
               <Marker
-                position={parcel.coordinates}
+                position={isSelected && selectedRealCoord ? selectedRealCoord : parcel.coordinates}
                 icon={createParcelIcon(parcel, isSelected)}
                 eventHandlers={{
                   click: () => onSelectParcel(parcel),
@@ -1043,7 +1055,7 @@ export const MapView: React.FC<MapViewProps> = ({
                 <>
                   {/* 주거지 200m 완충영역 (적색 점선 테두리만) */}
                   <Circle
-                    center={parcel.coordinates}
+                    center={selectedRealCoord || parcel.coordinates}
                     radius={200}
                     pathOptions={{
                       color: '#ef4444',
@@ -1055,7 +1067,7 @@ export const MapView: React.FC<MapViewProps> = ({
                   />
                   {/* 도로 100m 완충영역 (황색 점선 테두리만) */}
                   <Circle
-                    center={parcel.coordinates}
+                    center={selectedRealCoord || parcel.coordinates}
                     radius={100}
                     pathOptions={{
                       color: '#fbbf24',
