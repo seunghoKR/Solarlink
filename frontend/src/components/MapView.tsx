@@ -14,6 +14,7 @@ import {
 import L from 'leaflet';
 import type { Parcel, RegionSummary } from '../types/solar';
 import { reverseGeocodeCoordinate, type ReverseGeocodeResult } from '../services/geocodingService';
+import { fetchRealCadastralPolygon } from '../services/cadastralService';
 import {
   Sparkles,
   MapPin,
@@ -160,6 +161,28 @@ export const MapView: React.FC<MapViewProps> = ({
   const [rightClickPos, setRightClickPos] = useState<[number, number] | null>(null);
   const [rightClickLoading, setRightClickLoading] = useState<boolean>(false);
   const [rightClickData, setRightClickData] = useState<ReverseGeocodeResult | null>(null);
+  // 🌟 대표님 브이월드 승인키 연동: 국토부 공인 실시간 연속지적도(MultiPolygon) 상태
+  const [selectedRealPolygon, setSelectedRealPolygon] = useState<[number, number][] | null>(null);
+  const [rightClickRealPolygon, setRightClickRealPolygon] = useState<[number, number][] | null>(null);
+
+  // 🌟 선택된 부지의 실제 국토부 연속지적도 폴리곤을 실시간 쿼리
+  useEffect(() => {
+    if (!selectedParcel) {
+      setSelectedRealPolygon(null);
+      return;
+    }
+
+    let isMounted = true;
+    fetchRealCadastralPolygon(selectedParcel.coordinates[0], selectedParcel.coordinates[1]).then((feat) => {
+      if (isMounted && feat && feat.polygon && feat.polygon.length >= 3) {
+        setSelectedRealPolygon(feat.polygon);
+      }
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedParcel?.id, selectedParcel?.coordinates]);
 
   // 커스텀 시도 카운트 버블 아이콘
   const createRegionIcon = (region: RegionSummary) => {
@@ -321,7 +344,28 @@ export const MapView: React.FC<MapViewProps> = ({
     }
 
     try {
-      const result = await reverseGeocodeCoordinate(lat, lng);
+      // 🌟 국토부 실시간 연속지적도 및 역지오코딩 동시 호출
+      const [result, cadastral] = await Promise.all([
+        reverseGeocodeCoordinate(lat, lng),
+        fetchRealCadastralPolygon(lat, lng)
+      ]);
+
+      if (cadastral && cadastral.polygon && cadastral.polygon.length >= 3) {
+        setRightClickRealPolygon(cadastral.polygon);
+        if (result) {
+          result.pnu = cadastral.pnu || result.pnu;
+          if (cadastral.jibun) {
+            result.parcelAddress = `${cadastral.sido} ${cadastral.sigungu} ${cadastral.emd} ${cadastral.ri} ${cadastral.jibun}`.replace(/\s+/g, ' ').trim();
+          }
+          if (cadastral.pareaPyeong > 0) {
+            result.estimatedPyeong = cadastral.pareaPyeong;
+            result.estimatedSqm = cadastral.pareaSqm;
+          }
+        }
+      } else {
+        setRightClickRealPolygon(null);
+      }
+
       setRightClickData(result);
     } catch (err) {
       console.error('우클릭 역지오코딩 에러:', err);
@@ -334,19 +378,28 @@ export const MapView: React.FC<MapViewProps> = ({
   const buildParcelFromRightClick = (data: ReverseGeocodeResult): Parcel => {
     const lat = data.lat;
     const lng = data.lng;
-    const rLat = 0.00022 + Math.sqrt(data.estimatedPyeong / 5000) * 0.00018;
-    const rLng = 0.00026 + Math.sqrt(data.estimatedPyeong / 5000) * 0.00022;
 
-    // 8각 불규칙 지적도 형태 폴리곤 생성
-    const rightClickPolygon: [number, number][] = [];
-    const seed = Math.abs(Math.sin(lat * 1000 + lng * 2000) * 10000);
-    for (let v = 0; v < 8; v++) {
-      const angle = (v / 8) * Math.PI * 2;
-      const rVar = 0.75 + ((seed * (v + 1)) % 100) / 200;
-      rightClickPolygon.push([
-        parseFloat((lat + Math.sin(angle) * rLat * rVar).toFixed(6)),
-        parseFloat((lng + Math.cos(angle) * rLng * rVar).toFixed(6)),
-      ]);
+    let targetPolygon: [number, number][];
+
+    // 🌟 국토교통부 실시간 연속지적도 폴리곤 우선 사용
+    if (rightClickRealPolygon && rightClickRealPolygon.length >= 3) {
+      targetPolygon = rightClickRealPolygon;
+    } else {
+      const rLat = 0.00022 + Math.sqrt(data.estimatedPyeong / 5000) * 0.00018;
+      const rLng = 0.00026 + Math.sqrt(data.estimatedPyeong / 5000) * 0.00022;
+
+      // 8각 불규칙 지적도 형태 폴리곤 생성
+      const rightClickPolygon: [number, number][] = [];
+      const seed = Math.abs(Math.sin(lat * 1000 + lng * 2000) * 10000);
+      for (let v = 0; v < 8; v++) {
+        const angle = (v / 8) * Math.PI * 2;
+        const rVar = 0.75 + ((seed * (v + 1)) % 100) / 200;
+        rightClickPolygon.push([
+          parseFloat((lat + Math.sin(angle) * rLat * rVar).toFixed(6)),
+          parseFloat((lng + Math.cos(angle) * rLng * rVar).toFixed(6)),
+        ]);
+      }
+      targetPolygon = rightClickPolygon;
     }
 
     return {
@@ -362,7 +415,7 @@ export const MapView: React.FC<MapViewProps> = ({
       zoning: (data.zoning as any) || '계획관리지역',
       officialPrice: 32000,
       coordinates: [lat, lng],
-      polygon: rightClickPolygon,
+      polygon: targetPolygon,
       slopeDegree: data.slopeDegree,
       aspect: '정남향 (180°)',
       suitability: data.suitability,
@@ -807,6 +860,20 @@ export const MapView: React.FC<MapViewProps> = ({
             </Marker>
           ))}
 
+        {/* 🌟 대표님 브이월드 연동: 우클릭 지점 실시간 국토부 연속지적도 폴리곤 표시 */}
+        {rightClickRealPolygon && rightClickRealPolygon.length >= 3 && (
+          <Polygon
+            positions={rightClickRealPolygon}
+            pathOptions={{
+              color: '#f59e0b',
+              fillColor: '#f59e0b',
+              fillOpacity: 0.35,
+              weight: 2.5,
+              dashArray: '4, 4',
+            }}
+          />
+        )}
+
         {/* 🌟 대표님 요청: 마우스 우클릭 시 생성되는 정밀 주소/지목/평수 고대비 팝업창 */}
         {rightClickPos && (
           <Popup
@@ -815,6 +882,7 @@ export const MapView: React.FC<MapViewProps> = ({
               remove: () => {
                 setRightClickPos(null);
                 setRightClickData(null);
+                setRightClickRealPolygon(null);
               },
             }}
           >
@@ -986,9 +1054,9 @@ export const MapView: React.FC<MapViewProps> = ({
                 </Popup>
               </Marker>
 
-              {/* 필지 외곽 경계 폴리곤 (네이버 지도 스타일의 선명한 주소지 영역 하이라이트 - 50% 투명도) */}
+              {/* 필지 외곽 경계 폴리곤 (국토부 VWorld 실시간 연속지적도 우선 렌더링 - 50% 투명도) */}
               <Polygon
-                positions={parcel.polygon}
+                positions={(isSelected && selectedRealPolygon && selectedRealPolygon.length >= 3) ? selectedRealPolygon : parcel.polygon}
                 pathOptions={{
                   color: isSelected ? '#1d4ed8' : '#38bdf8',
                   fillColor: isSelected ? '#3b82f6' : '#0284c7',
