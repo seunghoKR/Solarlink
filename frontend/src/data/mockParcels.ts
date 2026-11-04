@@ -610,7 +610,20 @@ const REGION_DATA: { sido: string; code: string; count: number; sigungus: Sigung
         lng: 126.351,
       },
       { name: '고흥군', bjdongs: ['도양읍', '풍양면', '도화면', '포두면', '과역면'], lat: 34.611, lng: 127.284 },
-      { name: '영암군', bjdongs: ['삼호읍', '시종면', '도포면', '서호면', '학산면'], lat: 34.800, lng: 126.696 },
+      {
+        name: '영암군',
+        bjdongs: [
+          { name: '학산면', ri: '용산리', lat: 34.7361, lng: 126.6228 },
+          { name: '학산면', ri: '독천리', lat: 34.7325, lng: 126.6185 },
+          { name: '학산면', ri: '은곡리', lat: 34.7412, lng: 126.6345 },
+          { name: '삼호읍', ri: '용앙리', lat: 34.7640, lng: 126.4670 },
+          { name: '시종면', ri: '만수리', lat: 34.8450, lng: 126.6120 },
+          { name: '도포면', ri: '도포리', lat: 34.8210, lng: 126.6540 },
+          { name: '서호면', ri: '장천리', lat: 34.7550, lng: 126.5820 },
+        ],
+        lat: 34.7361,
+        lng: 126.6228,
+      },
     ],
   },
   {
@@ -743,6 +756,12 @@ function buildNationwideParcels(): Parcel[] {
         bjdongName = rawBjdong;
         baseLat = sigunguObj.lat;
         baseLng = sigunguObj.lng;
+        // 🌟 대한민국 법정 지번 규칙: 면(面) 및 읍(邑) 아래에는 반드시 '리(里)'가 존재해야 합법적 지번 성립!
+        if (bjdongName.endsWith('면') || bjdongName.endsWith('읍')) {
+          const sampleRis = ['원평리', '대기리', '용산리', '송학리', '동관리', '부동리', '백석리', '신흥리', '금계리', '평촌리'];
+          const pickedRi = sampleRis[Math.floor(pseudoRandom(seed + 6) * sampleRis.length)];
+          riPrefix = ` ${pickedRi}`;
+        }
       }
 
       // 면적: 120평 ~ 12,000평 고른 분포 (수천 건 평수 검색 지원)
