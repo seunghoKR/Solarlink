@@ -119,6 +119,11 @@ export const ReportModal: React.FC<ReportModalProps> = ({ isOpen, onClose, parce
                   </th>
                   <td colSpan={3} className="py-2 px-3 font-bold text-slate-900 text-sm">
                     {parcel.address}
+                    {parcel.roadAddress && parcel.roadAddress !== parcel.address && (
+                      <span className="block text-xs font-normal text-slate-500 mt-0.5">
+                        [도로명주소] {parcel.roadAddress}
+                      </span>
+                    )}
                   </td>
                 </tr>
                 <tr className="border-b border-slate-200">

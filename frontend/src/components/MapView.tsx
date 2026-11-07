@@ -404,9 +404,18 @@ export const MapView: React.FC<MapViewProps> = ({
           if (cadastral.jibun) {
             result.parcelAddress = `${cadastral.sido} ${cadastral.sigungu} ${cadastral.emd} ${cadastral.ri} ${cadastral.jibun}`.replace(/\s+/g, ' ').trim();
           }
+          if (cadastral.roadAddress) {
+            result.roadAddress = cadastral.roadAddress;
+          }
           if (cadastral.pareaPyeong > 0) {
             result.estimatedPyeong = cadastral.pareaPyeong;
             result.estimatedSqm = cadastral.pareaSqm;
+          }
+          if (cadastral.zoning) {
+            result.zoning = cadastral.zoning;
+          }
+          if (cadastral.normalizedJimok) {
+            result.landCategory = cadastral.normalizedJimok;
           }
         }
       } else {
@@ -452,11 +461,12 @@ export const MapView: React.FC<MapViewProps> = ({
     return {
       id: `rc_${Date.now()}`,
       pnu: data.pnu || `45${Math.floor(1000000000000000 + Math.random() * 9000000000000000)}`,
-      address: data.roadAddress || data.parcelAddress || data.address,
+      address: data.parcelAddress || data.address,
+      roadAddress: data.roadAddress,
       sido: data.sido,
       sigungu: data.sigungu,
       bjdong: data.bjdong || '해당지역',
-      landCategory: (data.landCategory as any) || '전',
+      landCategory: (data.landCategory as any) || '대지',
       areaPyeong: data.estimatedPyeong,
       areaSqm: data.estimatedSqm,
       zoning: (data.zoning as any) || '계획관리지역',

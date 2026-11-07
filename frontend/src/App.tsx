@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
 import { MOCK_PARCELS, REGION_SUMMARIES } from './data/mockParcels';
-import type { Parcel } from './types/solar';
+import type { Parcel, LandCategory, Zoning } from './types/solar';
 import type { User } from './types/auth';
 import { searchAddressCoordinate } from './services/geocodingService';
-import { fetchRealCadastralByAddress } from './services/cadastralService';
+import { fetchRealCadastralByAddress, normalizeJimok, fetchRealZoning } from './services/cadastralService';
 import {
   addRecentSearch,
   recordAuditLog,
@@ -117,7 +117,7 @@ export const App: React.FC = () => {
   const [activeCriteria, setActiveCriteria] = useState<FilterCriteria>({
     minPyeong: 100,
     maxPyeong: 10000,
-    selectedCategories: ['잡종지', '임야', '전', '답', '염전'],
+    selectedCategories: ['잡종지', '임야', '전', '답', '염전', '대지', '과수원', '목장용지'],
     selectedZoning: '전체',
     minGridCapacity: 0,
     strictRegulationOnly: false,
@@ -139,7 +139,7 @@ export const App: React.FC = () => {
     setActiveCriteria({
       minPyeong: 100,
       maxPyeong: 10000,
-      selectedCategories: ['잡종지', '임야', '전', '답', '염전'],
+      selectedCategories: ['잡종지', '임야', '전', '답', '염전', '대지', '과수원', '목장용지'],
       selectedZoning: '전체',
       minGridCapacity: 0,
       strictRegulationOnly: false,
@@ -176,9 +176,14 @@ export const App: React.FC = () => {
     if (cadastral && cadastral.realCoords && cadastral.realCoords[0] > 0) {
       const lat = cadastral.realCoords[0];
       const lng = cadastral.realCoords[1];
-      const displayAddress = cadastral.jibun
+
+      // 지번 및 도로명 주소 정밀 조합
+      const jibunAddr = cadastral.jibun
         ? `${cadastral.sido} ${cadastral.sigungu} ${cadastral.emd} ${cadastral.ri} ${cadastral.jibun}`.replace(/\s+/g, ' ').trim()
-        : trimmed;
+        : '';
+      const isRoadSearch = /[0-9가-힣]+(?:로|길)\b|[0-9가-힣]+(?:로|길)\s*\d+/.test(trimmed);
+      const displayAddress = jibunAddr || trimmed;
+      const roadAddr = cadastral.roadAddress || (isRoadSearch ? trimmed : undefined);
 
       const pnuCode = cadastral.pnu || `45${Math.floor(1000000000000000 + Math.random() * 9000000000000000)}`;
       const pyeong = cadastral.pareaPyeong > 0 ? cadastral.pareaPyeong : 1850;
@@ -190,17 +195,22 @@ export const App: React.FC = () => {
         trimmed.toLowerCase().includes(p.address.toLowerCase())
       );
 
+      // 🌟 국토부 실시간 공인 용도지역 및 표준 지목(대지 등) 100% 반영
+      const resolvedZoning = (cadastral.zoning || matched?.zoning || '계획관리지역') as Zoning;
+      const resolvedJimok = (cadastral.normalizedJimok || normalizeJimok(cadastral.jimok) || matched?.landCategory || '대지') as LandCategory;
+
       const realParcel: Parcel = {
         id: matched?.id || `search_${Date.now()}`,
         pnu: pnuCode,
         address: displayAddress,
-        sido: cadastral.sido || matched?.sido || trimmed.split(' ')[0] || '전라남도',
-        sigungu: cadastral.sigungu || matched?.sigungu || trimmed.split(' ')[1] || '영암군',
-        bjdong: cadastral.ri || cadastral.emd || matched?.bjdong || '용산리',
-        landCategory: (cadastral.jimok as any) || matched?.landCategory || '전',
+        roadAddress: roadAddr,
+        sido: cadastral.sido || matched?.sido || trimmed.split(' ')[0] || '전북특별자치도',
+        sigungu: cadastral.sigungu || matched?.sigungu || trimmed.split(' ')[1] || '전주시 덕진구',
+        bjdong: cadastral.ri || cadastral.emd || matched?.bjdong || '만성동',
+        landCategory: resolvedJimok,
         areaPyeong: pyeong,
         areaSqm: sqm,
-        zoning: matched?.zoning || '생산관리지역',
+        zoning: resolvedZoning,
         officialPrice: matched?.officialPrice || 35000,
         coordinates: [lat, lng],
         polygon: (cadastral.polygon && cadastral.polygon.length >= 3) ? cadastral.polygon : (matched?.polygon || [
@@ -301,18 +311,22 @@ export const App: React.FC = () => {
       `실시간 지오코딩 검색: ${trimmed} -> ${displayAddress} (PNU: ${pnuCode})`
     );
 
+    // 지오코더 성공 좌표의 실시간 용도지역 조회
+    const fallbackZoning = (await fetchRealZoning(lat, lng)) as Zoning;
+
     // 🌟 대표님 요청: 일단 검색하고자 하는 주소지를 지도에서 시원하게 보여주고, 하이라이트 표시!
     const newParcel: Parcel = {
       id: `search_${Date.now()}`,
       pnu: pnuCode,
       address: displayAddress, // 정제된 도로명/지번 주소 표기
+      roadAddress: trimmed.includes('길') || trimmed.includes('로') ? trimmed : undefined,
       sido: geo?.sido || trimmed.split(' ')[0] || '전북특별자치도',
       sigungu: geo?.sigungu || trimmed.split(' ')[1] || '전주시 덕진구',
       bjdong: geo?.bjdong || '해당지역',
-      landCategory: '전',
+      landCategory: '대지',
       areaPyeong: 2150,
       areaSqm: 7107,
-      zoning: '계획관리지역',
+      zoning: fallbackZoning || '계획관리지역',
       officialPrice: 38000,
       coordinates: [lat, lng],
       polygon: [

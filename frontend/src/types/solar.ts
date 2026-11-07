@@ -1,4 +1,15 @@
-export type LandCategory = '임야' | '전' | '답' | '과수원' | '잡종지' | '목장용지' | '대지' | '염전';
+export type LandCategory = 
+  | '임야' 
+  | '전' 
+  | '답' 
+  | '과수원' 
+  | '잡종지' 
+  | '목장용지' 
+  | '대지' 
+  | '염전'
+  | '공장용지'
+  | '창고용지'
+  | string;
 
 export type Zoning = 
   | '계획관리지역' 
@@ -7,7 +18,21 @@ export type Zoning =
   | '농림지역' 
   | '자연환경보전지역' 
   | '일반상업지역' 
-  | '자연녹지지역';
+  | '자연녹지지역'
+  | '제1종일반주거지역'
+  | '제2종일반주거지역'
+  | '제3종일반주거지역'
+  | '준주거지역'
+  | '제1종전용주거지역'
+  | '제2종전용주거지역'
+  | '근린상업지역'
+  | '유통상업지역'
+  | '전용공업지역'
+  | '일반공업지역'
+  | '준공업지역'
+  | '보전녹지지역'
+  | '생산녹지지역'
+  | string;
 
 export type SuitabilityStatus = '예비적합' | '조건부' | '추가확인' | '제한';
 
@@ -33,6 +58,7 @@ export interface Parcel {
   id: string;
   pnu: string; // 19자리 고유식별번호
   address: string;
+  roadAddress?: string; // 도로명 주소 (예: 전주시 덕진구 월방1길 3-8)
   sido: string;
   sigungu: string;
   bjdong: string;

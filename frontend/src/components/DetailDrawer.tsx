@@ -115,6 +115,12 @@ export const DetailDrawer: React.FC<DetailDrawerProps> = ({
           <h2 className="text-base font-bold text-white tracking-tight leading-snug break-keep">
             {parcel.address}
           </h2>
+          {parcel.roadAddress && parcel.roadAddress !== parcel.address && (
+            <div className="text-[11px] text-slate-400 mt-0.5 flex items-center">
+              <span className="text-amber-400/90 font-medium mr-1.5">[도로명]</span>
+              <span>{parcel.roadAddress}</span>
+            </div>
+          )}
           <p className="text-xs text-slate-300 mt-0.5">
             <span className="text-amber-400 font-bold">{parcel.areaPyeong.toLocaleString()}평</span>
             <span className="text-slate-500 ml-1">({parcel.areaSqm.toLocaleString()}㎡)</span>

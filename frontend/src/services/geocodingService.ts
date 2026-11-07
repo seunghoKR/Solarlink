@@ -19,6 +19,7 @@ export interface GeocodeResult {
 }
 
 import type { SuitabilityStatus } from '../types/solar';
+import { fetchVWorldCoordSmartJSONP, fetchRealZoning } from './cadastralService';
 
 export interface ReverseGeocodeResult {
   address: string;
@@ -124,6 +125,21 @@ async function fetchOsmCoord(query: string): Promise<GeocodeResult | null> {
 export async function searchAddressCoordinate(query: string): Promise<GeocodeResult | null> {
   const trimmed = query.trim();
   if (!trimmed) return null;
+
+  // 1. VWorld 스마트 지능형 도로명/지번 듀얼 JSONP 검색 (CORS 에러 0% 보장)
+  const smartCoords = await fetchVWorldCoordSmartJSONP(trimmed);
+  if (smartCoords) {
+    return {
+      address: trimmed,
+      refinedText: trimmed,
+      lat: smartCoords[0],
+      lng: smartCoords[1],
+      sido: trimmed.split(' ')[0] || '전북특별자치도',
+      sigungu: trimmed.split(' ')[1] || '전주시 덕진구',
+      bjdong: '',
+      originalQuery: trimmed,
+    };
+  }
 
   // 1-A. 도로명 검색 (type=road) 1차 시도
   const roadResult = await fetchVWorldCoord(trimmed, 'road');
@@ -347,7 +363,10 @@ export async function reverseGeocodeCoordinate(
   const categories = ['잡종지', '전', '답', '임야', '과수원', '염전'];
   const zonings = ['계획관리지역', '생산관리지역', '농림지역', '자연녹지지역'];
   const landCategory = categories[Math.floor(seed) % categories.length];
-  const zoning = zonings[Math.floor(seed * 1.5) % zonings.length];
+
+  // 🌟 국토교통부 국토계획법 4대 용도지역 실시간 공인 명칭 조회
+  const realZoning = await fetchRealZoning(lat, lng);
+  const zoning = realZoning || zonings[Math.floor(seed * 1.5) % zonings.length];
 
   // 평수: 950평 ~ 4,800평 사이
   const estimatedPyeong = Math.floor(950 + (seed % 3850));

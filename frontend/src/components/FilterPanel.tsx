@@ -34,6 +34,7 @@ interface FilterPanelProps {
 }
 
 const ALL_CATEGORIES: LandCategory[] = [
+  '대지',
   '잡종지',
   '임야',
   '전',
@@ -51,6 +52,10 @@ const ALL_ZONINGS: (Zoning | '전체')[] = [
   '농림지역',
   '자연환경보전지역',
   '자연녹지지역',
+  '제1종일반주거지역',
+  '제2종일반주거지역',
+  '준주거지역',
+  '일반상업지역',
 ];
 
 export const FilterPanel: React.FC<FilterPanelProps> = ({
