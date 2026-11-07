@@ -59,6 +59,7 @@ export interface Parcel {
   pnu: string; // 19자리 고유식별번호
   address: string;
   roadAddress?: string; // 도로명 주소 (예: 전주시 덕진구 월방1길 3-8)
+  cadastralJibun?: string; // 국토부 공인 실필지 지번 (예: 전라남도 해남군 황산면 원호리 산43-1임)
   sido: string;
   sigungu: string;
   bjdong: string;

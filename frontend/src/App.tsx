@@ -466,10 +466,12 @@ export const App: React.FC = () => {
           const realZoning = (realCadastral.zoning || (await fetchRealZoning(parcel.coordinates[0], parcel.coordinates[1]))) as Zoning;
           const realJimok = (realCadastral.normalizedJimok || normalizeJimok(realCadastral.jimok) || parcel.landCategory) as LandCategory;
 
-          const hydratedParcel: Parcel = {
+          // 🌟 목록에서 선택한 주소명(parcel.address)을 100% 일관되게 유지하여 직관성 및 신뢰성 확보!
+          const updatedParcel: Parcel = {
             ...parcel,
             pnu: realCadastral.pnu,
-            address: jibunAddr || parcel.address,
+            address: parcel.address, // 목록과 100% 동일하게 유지!
+            cadastralJibun: jibunAddr || undefined, // 실제 국토부 지적공부상 실필지 정보
             roadAddress: realCadastral.roadAddress || parcel.roadAddress,
             sido: realCadastral.sido || parcel.sido,
             sigungu: realCadastral.sigungu || parcel.sigungu,
@@ -479,8 +481,8 @@ export const App: React.FC = () => {
             polygon: (realCadastral.polygon && realCadastral.polygon.length >= 3) ? realCadastral.polygon : parcel.polygon,
           };
 
-          setSelectedParcel((curr) => (curr?.id === parcel.id ? hydratedParcel : curr));
-          saveLastViewedParcel(currentUser?.id || 'guest', hydratedParcel);
+          setSelectedParcel((curr) => (curr?.id === parcel.id ? updatedParcel : curr));
+          saveLastViewedParcel(currentUser?.id || 'guest', updatedParcel);
         }
       })
       .catch((err) => {

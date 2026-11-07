@@ -14,7 +14,7 @@ import {
 import L from 'leaflet';
 import type { Parcel, RegionSummary } from '../types/solar';
 import { reverseGeocodeCoordinate, type ReverseGeocodeResult } from '../services/geocodingService';
-import { fetchRealCadastralPolygon, fetchRealCadastralByAddress } from '../services/cadastralService';
+import { fetchRealCadastralPolygon } from '../services/cadastralService';
 import {
   Sparkles,
   MapPin,
@@ -201,35 +201,38 @@ export const MapView: React.FC<MapViewProps> = ({
   const [rightClickPos, setRightClickPos] = useState<[number, number] | null>(null);
   const [rightClickLoading, setRightClickLoading] = useState<boolean>(false);
   const [rightClickData, setRightClickData] = useState<ReverseGeocodeResult | null>(null);
-  // 🌟 대표님 브이월드 승인키 연동: 국토부 공인 실시간 연속지적도(MultiPolygon) 상태
-  const [selectedRealPolygon, setSelectedRealPolygon] = useState<[number, number][] | null>(null);
-  const [selectedRealCoord, setSelectedRealCoord] = useState<[number, number] | null>(null);
+  // 🌟 대표님 브이월드 승인키 연동: 국토부 공인 실시간 연속지적도(MultiPolygon) 상태 (선택된 parcelId에 엄격히 바인딩)
+  const [selectedRealCadastral, setSelectedRealCadastral] = useState<{
+    parcelId: string;
+    polygon: [number, number][];
+  } | null>(null);
   const [rightClickRealPolygon, setRightClickRealPolygon] = useState<[number, number][] | null>(null);
 
-  // 🌟 선택된 부지의 주소를 기반으로 실제 국토부 공인 법정 좌표 및 진짜 연속지적도 폴리곤을 실시간 동기화
+  // 🌟 선택된 부지의 실제 국토부 연속지적도 폴리곤을 실시간 동기화
   useEffect(() => {
     if (!selectedParcel) {
-      setSelectedRealPolygon(null);
-      setSelectedRealCoord(null);
+      setSelectedRealCadastral(null);
       return;
     }
 
+    const currentId = selectedParcel.id;
+    // 이전 필지의 잔상 폴리곤을 0초 만에 즉각 초기화하여 고스트 현상 원천 차단!
+    setSelectedRealCadastral(null);
+
     let isMounted = true;
-    fetchRealCadastralByAddress(selectedParcel.address, selectedParcel.coordinates).then((res) => {
-      if (isMounted && res) {
-        if (res.polygon && res.polygon.length >= 3) {
-          setSelectedRealPolygon(res.polygon);
-        }
-        if (res.realCoords) {
-          setSelectedRealCoord(res.realCoords);
-        }
+    fetchRealCadastralPolygon(selectedParcel.coordinates[0], selectedParcel.coordinates[1]).then((res) => {
+      if (isMounted && res && res.polygon && res.polygon.length >= 3) {
+        setSelectedRealCadastral({
+          parcelId: currentId,
+          polygon: res.polygon,
+        });
       }
     });
 
     return () => {
       isMounted = false;
     };
-  }, [selectedParcel?.id, selectedParcel?.address, selectedParcel?.coordinates]);
+  }, [selectedParcel?.id, selectedParcel?.coordinates]);
 
   // 커스텀 시도 카운트 버블 아이콘
   const createRegionIcon = (region: RegionSummary) => {
@@ -573,17 +576,18 @@ export const MapView: React.FC<MapViewProps> = ({
   };
 
   const initialCenter: [number, number] = [36.0, 127.8];
+  // 🌟 대표님 보고 사항: 선택된 필지의 실제 고유 좌표로 즉시 정밀 이동 (비동기 좌표 오염/경합 원천 차단)
   const targetCenter: [number, number] = selectedParcel
-    ? (selectedRealCoord || selectedParcel.coordinates)
+    ? selectedParcel.coordinates
     : initialCenter;
   const targetZoom = selectedParcel ? 17 : 7;
 
-  // 대량 3,900건 렌더링 성능 최적화: 지도에는 상위 150건 + 선택된 필지를 우선 렌더링
+  // 대량 3,900건 렌더링 성능 최적화: 지도에는 상위 150건을 보여주되, 선택된 필지가 150위 밖이더라도 반드시 포함! (빈 지도 버그 해결)
   const mapRenderParcels = React.useMemo(() => {
-    if (selectedParcel && !parcels.some((p) => p.id === selectedParcel.id)) {
-      return [selectedParcel, ...parcels.slice(0, 150)];
-    }
-    return parcels.slice(0, 150);
+    if (!selectedParcel) return parcels.slice(0, 150);
+    const isInTop150 = parcels.slice(0, 150).some((p) => p.id === selectedParcel.id);
+    if (isInTop150) return parcels.slice(0, 150);
+    return [selectedParcel, ...parcels.slice(0, 149)];
   }, [parcels, selectedParcel]);
 
   return (
@@ -1038,7 +1042,7 @@ export const MapView: React.FC<MapViewProps> = ({
             <React.Fragment key={parcel.id}>
               {/* 필지 마커 */}
               <Marker
-                position={isSelected && selectedRealCoord ? selectedRealCoord : parcel.coordinates}
+                position={parcel.coordinates}
                 icon={createParcelIcon(parcel, isSelected)}
                 eventHandlers={{
                   click: () => onSelectParcel(parcel),
@@ -1049,12 +1053,12 @@ export const MapView: React.FC<MapViewProps> = ({
                 }}
               >
                 <Popup>
-                  {/* 🌟 대표님 요청 1: 좌클릭 팝업창도 고대비 다크 테마로 선명하게 개선 */}
+                  {/* 🌟 대표님 요청: 검색 목록 주소와 100% 일치하도록 보장 & 공부상 지번 보조 안내 */}
                   {(() => {
                     const target = (isSelected && selectedParcel) ? selectedParcel : parcel;
                     return (
-                      <div className="p-1.5 text-slate-100 min-w-[210px] max-w-[250px] font-sans">
-                        <div className="flex items-center space-x-1.5 mb-2 pb-1.5 border-b border-slate-700/80">
+                      <div className="p-1.5 text-slate-100 min-w-[210px] max-w-[260px] font-sans">
+                        <div className="flex items-center space-x-1.5 mb-1.5 pb-1.5 border-b border-slate-700/80">
                           <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
                             {target.landCategory}
                           </span>
@@ -1062,6 +1066,13 @@ export const MapView: React.FC<MapViewProps> = ({
                             {target.address}
                           </span>
                         </div>
+
+                        {target.cadastralJibun && target.cadastralJibun !== target.address && (
+                          <div className="mb-2 text-[10px] text-sky-300 bg-sky-950/80 border border-sky-700/60 px-1.5 py-0.5 rounded flex items-center gap-1">
+                            <span className="shrink-0 font-semibold text-sky-400">[공부상 지번]</span>
+                            <span className="truncate" title={target.cadastralJibun}>{target.cadastralJibun}</span>
+                          </div>
+                        )}
 
                         <div className="space-y-1 text-xs text-slate-300">
                           <div className="flex justify-between items-center">
@@ -1094,7 +1105,7 @@ export const MapView: React.FC<MapViewProps> = ({
 
               {/* 필지 외곽 경계 폴리곤 (국토부 VWorld 실시간 연속지적도 우선 렌더링 - 50% 투명도) */}
               <Polygon
-                positions={(isSelected && selectedRealPolygon && selectedRealPolygon.length >= 3) ? selectedRealPolygon : parcel.polygon}
+                positions={(isSelected && selectedRealCadastral?.parcelId === parcel.id && selectedRealCadastral.polygon.length >= 3) ? selectedRealCadastral.polygon : parcel.polygon}
                 pathOptions={{
                   color: isSelected ? '#1d4ed8' : '#38bdf8',
                   fillColor: isSelected ? '#3b82f6' : '#0284c7',
@@ -1115,7 +1126,7 @@ export const MapView: React.FC<MapViewProps> = ({
                 <>
                   {/* 주거지 200m 완충영역 (적색 점선 테두리만) */}
                   <Circle
-                    center={selectedRealCoord || parcel.coordinates}
+                    center={parcel.coordinates}
                     radius={200}
                     pathOptions={{
                       color: '#ef4444',
@@ -1127,7 +1138,7 @@ export const MapView: React.FC<MapViewProps> = ({
                   />
                   {/* 도로 100m 완충영역 (황색 점선 테두리만) */}
                   <Circle
-                    center={selectedRealCoord || parcel.coordinates}
+                    center={parcel.coordinates}
                     radius={100}
                     pathOptions={{
                       color: '#fbbf24',
