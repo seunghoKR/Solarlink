@@ -594,8 +594,39 @@ const REGION_DATA: { sido: string; code: string; count: number; sigungus: Sigung
     code: '46',
     count: 842,
     sigungus: [
-      { name: '해남군', bjdongs: ['산이면', '문내면', '황산면', '화원면', '마산면'], lat: 34.573, lng: 126.599 },
-      { name: '영광군', bjdongs: ['백수읍', '홍농읍', '염산면', '군남면', '법성면'], lat: 35.277, lng: 126.512 },
+      {
+        name: '해남군',
+        bjdongs: [
+          { name: '화원면', ri: '후산리', lat: 34.6950, lng: 126.2840 },
+          { name: '화원면', ri: '구림리', lat: 34.6980, lng: 126.2920 },
+          { name: '화원면', ri: '산호리', lat: 34.7120, lng: 126.2750 },
+          { name: '화원면', ri: '매월리', lat: 34.6750, lng: 126.2550 },
+          { name: '산이면', ri: '부동리', lat: 34.6657, lng: 126.3995 },
+          { name: '산이면', ri: '상공리', lat: 34.6820, lng: 126.4150 },
+          { name: '산이면', ri: '덕호리', lat: 34.6520, lng: 126.4420 },
+          { name: '산이면', ri: '구성리', lat: 34.6710, lng: 126.4280 },
+          { name: '문내면', ri: '학동리', lat: 34.6250, lng: 126.3250 },
+          { name: '문내면', ri: '용암리', lat: 34.6410, lng: 126.3120 },
+          { name: '황산면', ri: '남리', lat: 34.5950, lng: 126.4520 },
+          { name: '황산면', ri: '연호리', lat: 34.5820, lng: 126.4850 },
+          { name: '마산면', ri: '연구리', lat: 34.6150, lng: 126.5450 },
+        ],
+        lat: 34.665,
+        lng: 126.399,
+      },
+      {
+        name: '영광군',
+        bjdongs: [
+          { name: '백수읍', ri: '하사리', lat: 35.2950, lng: 126.3820 },
+          { name: '백수읍', ri: '백암리', lat: 35.3120, lng: 126.3950 },
+          { name: '염산면', ri: '두우리', lat: 35.1950, lng: 126.3520 },
+          { name: '염산면', ri: '야월리', lat: 35.2150, lng: 126.3850 },
+          { name: '군남면', ri: '포천리', lat: 35.2420, lng: 126.4820 },
+          { name: '홍농읍', ri: '계봉리', lat: 35.3850, lng: 126.4250 },
+        ],
+        lat: 35.277,
+        lng: 126.452,
+      },
       {
         name: '신안군',
         // 🌟 도서 지역 바다 좌표 이탈 완전 방지: 비금면, 지도읍, 압해읍 등 각 섬의 실제 육지 중심 좌표 개별 지정!
@@ -609,7 +640,18 @@ const REGION_DATA: { sido: string; code: string; count: number; sigungus: Sigung
         lat: 34.831,
         lng: 126.351,
       },
-      { name: '고흥군', bjdongs: ['도양읍', '풍양면', '도화면', '포두면', '과역면'], lat: 34.611, lng: 127.284 },
+      {
+        name: '고흥군',
+        bjdongs: [
+          { name: '도양읍', ri: '봉암리', lat: 34.5250, lng: 127.1420 },
+          { name: '풍양면', ri: '고옥리', lat: 34.5650, lng: 127.2150 },
+          { name: '도화면', ri: '발포리', lat: 34.4850, lng: 127.2850 },
+          { name: '포두면', ri: '길두리', lat: 34.5850, lng: 127.3520 },
+          { name: '과역면', ri: '과역리', lat: 34.6850, lng: 127.3650 },
+        ],
+        lat: 34.585,
+        lng: 127.285,
+      },
       {
         name: '영암군',
         bjdongs: [
@@ -631,11 +673,68 @@ const REGION_DATA: { sido: string; code: string; count: number; sigungus: Sigung
     code: '45',
     count: 620,
     sigungus: [
-      { name: '완주군', bjdongs: ['삼례읍', '봉동읍', '용진읍', '고산면', '이서면'], lat: 35.904, lng: 127.162 },
-      { name: '고창군', bjdongs: ['고창읍', '아산면', '무장면', '공음면', '상하면', '해리면'], lat: 35.435, lng: 126.702 },
-      { name: '부안군', bjdongs: ['부안읍', '계화면', '변산면', '보안면', '줄포면'], lat: 35.731, lng: 126.733 },
-      { name: '정읍시', bjdongs: ['신태인읍', '북면', '입암면', '태인면', '감곡면'], lat: 35.569, lng: 126.857 },
-      { name: '김제시', bjdongs: ['만경읍', '백산면', '공덕면', '청하면', '성덕면'], lat: 35.803, lng: 126.880 },
+      {
+        name: '완주군',
+        bjdongs: [
+          { name: '삼례읍', ri: '신금리', lat: 35.9150, lng: 127.0520 },
+          { name: '봉동읍', ri: '구만리', lat: 35.9350, lng: 127.1420 },
+          { name: '용진읍', ri: '상운리', lat: 35.8850, lng: 127.1850 },
+          { name: '고산면', ri: '삼기리', lat: 35.9850, lng: 127.2150 },
+          { name: '동상면', ri: '신월리', lat: 35.9555, lng: 127.2874 },
+          { name: '이서면', ri: '갈산리', lat: 35.8350, lng: 127.0520 },
+        ],
+        lat: 35.935,
+        lng: 127.185,
+      },
+      {
+        name: '고창군',
+        bjdongs: [
+          { name: '고창읍', ri: '율계리', lat: 35.4350, lng: 126.7020 },
+          { name: '아산면', ri: '반암리', lat: 35.4520, lng: 126.6350 },
+          { name: '무장면', ri: '옥택리', lat: 35.4150, lng: 126.5950 },
+          { name: '공음면', ri: '장곡리', lat: 35.3850, lng: 126.5350 },
+          { name: '상하면', ri: '자룡리', lat: 35.3950, lng: 126.4850 },
+          { name: '해리면', ri: '광승리', lat: 35.4650, lng: 126.5150 },
+        ],
+        lat: 35.435,
+        lng: 126.635,
+      },
+      {
+        name: '부안군',
+        bjdongs: [
+          { name: '계화면', ri: '창북리', lat: 35.7650, lng: 126.7350 },
+          { name: '계화면', ri: '계화리', lat: 35.7950, lng: 126.6950 },
+          { name: '보안면', ri: '영전리', lat: 35.6550, lng: 126.6850 },
+          { name: '줄포면', ri: '줄포리', lat: 35.5850, lng: 126.6650 },
+          { name: '변산면', ri: '격포리', lat: 35.6250, lng: 126.5250 },
+        ],
+        lat: 35.731,
+        lng: 126.733,
+      },
+      {
+        name: '정읍시',
+        bjdongs: [
+          { name: '신태인읍', ri: '신태인리', lat: 35.6950, lng: 126.8950 },
+          { name: '북면', ri: '화곡리', lat: 35.6350, lng: 126.8850 },
+          { name: '입암면', ri: '단곡리', lat: 35.4950, lng: 126.8450 },
+          { name: '태인면', ri: '태성리', lat: 35.6550, lng: 126.9450 },
+          { name: '감곡면', ri: '유정리', lat: 35.6850, lng: 126.8350 },
+        ],
+        lat: 35.569,
+        lng: 126.857,
+      },
+      {
+        name: '김제시',
+        bjdongs: [
+          { name: '만경읍', ri: '대동리', lat: 35.8550, lng: 126.8350 },
+          { name: '백산면', ri: '하정리', lat: 35.8450, lng: 126.8950 },
+          { name: '공덕면', ri: '황산리', lat: 35.8850, lng: 126.9150 },
+          { name: '청하면', ri: '동지산리', lat: 35.9150, lng: 126.8650 },
+          { name: '성덕면', ri: '대목리', lat: 35.8150, lng: 126.7950 },
+        ],
+        lat: 35.803,
+        lng: 126.880,
+      },
     ],
   },
   {
@@ -643,11 +742,60 @@ const REGION_DATA: { sido: string; code: string; count: number; sigungus: Sigung
     code: '44',
     count: 512,
     sigungus: [
-      { name: '태안군', bjdongs: ['태안읍', '안면읍', '남면', '원북면', '소원면'], lat: 36.745, lng: 126.297 },
-      { name: '서산시', bjdongs: ['대산읍', '인지면', '부석면', '팔봉면', '지곡면'], lat: 36.784, lng: 126.450 },
-      { name: '당진시', bjdongs: ['합덕읍', '송악읍', '고대면', '석문면', '우강면'], lat: 36.889, lng: 126.628 },
-      { name: '보령시', bjdongs: ['웅천읍', '주포면', '오천면', '천북면', '남포면'], lat: 36.333, lng: 126.612 },
-      { name: '홍성군', bjdongs: ['홍북읍', '광천읍', '홍동면', '장곡면', '서부면'], lat: 36.601, lng: 126.660 },
+      {
+        name: '태안군',
+        bjdongs: [
+          { name: '남면', ri: '당암리', lat: 36.6520, lng: 126.3450 },
+          { name: '남면', ri: '신온리', lat: 36.6350, lng: 126.3150 },
+          { name: '안면읍', ri: '창기리', lat: 36.5650, lng: 126.3520 },
+          { name: '원북면', ri: '방갈리', lat: 36.8520, lng: 126.2150 },
+          { name: '소원면', ri: '모항리', lat: 36.7850, lng: 126.1520 },
+        ],
+        lat: 36.685,
+        lng: 126.285,
+      },
+      {
+        name: '서산시',
+        bjdongs: [
+          { name: '부석면', ri: '창리', lat: 36.6150, lng: 126.4250 },
+          { name: '부석면', ri: '간월도리', lat: 36.5850, lng: 126.4420 },
+          { name: '대산읍', ri: '화곡리', lat: 36.9850, lng: 126.4150 },
+          { name: '팔봉면', ri: '진장리', lat: 36.8150, lng: 126.3850 },
+        ],
+        lat: 36.685,
+        lng: 126.425,
+      },
+      {
+        name: '당진시',
+        bjdongs: [
+          { name: '석문면', ri: '교로리', lat: 37.0150, lng: 126.5150 },
+          { name: '석문면', ri: '삼봉리', lat: 36.9850, lng: 126.5650 },
+          { name: '합덕읍', ri: '대전리', lat: 36.8150, lng: 126.7520 },
+          { name: '우강면', ri: '송산리', lat: 36.8520, lng: 126.7950 },
+        ],
+        lat: 36.915,
+        lng: 126.655,
+      },
+      {
+        name: '보령시',
+        bjdongs: [
+          { name: '웅천읍', ri: '독산리', lat: 36.2550, lng: 126.5550 },
+          { name: '천북면', ri: '학성리', lat: 36.4850, lng: 126.4950 },
+          { name: '남포면', ri: '월전리', lat: 36.3150, lng: 126.5650 },
+        ],
+        lat: 36.333,
+        lng: 126.612,
+      },
+      {
+        name: '홍성군',
+        bjdongs: [
+          { name: '서부면', ri: '남당리', lat: 36.5650, lng: 126.4850 },
+          { name: '결성면', ri: '교항리', lat: 36.5350, lng: 126.5450 },
+          { name: '홍동면', ri: '운월리', lat: 36.5650, lng: 126.6850 },
+        ],
+        lat: 36.601,
+        lng: 126.660,
+      },
     ],
   },
   {
@@ -655,11 +803,58 @@ const REGION_DATA: { sido: string; code: string; count: number; sigungus: Sigung
     code: '47',
     count: 730,
     sigungus: [
-      { name: '상주시', bjdongs: ['함창읍', '사벌국면', '중동면', '낙동면', '공검면'], lat: 36.415, lng: 128.163 },
-      { name: '안동시', bjdongs: ['풍산읍', '와룡면', '북후면', '서후면', '풍천면'], lat: 36.568, lng: 128.729 },
-      { name: '의성군', bjdongs: ['의성읍', '단촌면', '점곡면', '금성면', '봉양면', '비안면'], lat: 36.352, lng: 128.697 },
-      { name: '예천군', bjdongs: ['예천읍', '용문면', '호명읍', '유천면', '지보면'], lat: 36.657, lng: 128.452 },
-      { name: '봉화군', bjdongs: ['봉화읍', '물야면', '봉성면', '명호면', '춘양면'], lat: 36.893, lng: 128.732 },
+      {
+        name: '상주시',
+        bjdongs: [
+          { name: '화남면', ri: '평온리', lat: 36.4150, lng: 127.9650 },
+          { name: '사벌국면', ri: '덕가리', lat: 36.4850, lng: 128.2150 },
+          { name: '중동면', ri: '우물리', lat: 36.3850, lng: 128.2550 },
+          { name: '낙동면', ri: '신상리', lat: 36.3520, lng: 128.2850 },
+          { name: '공검면', ri: '부곡리', lat: 36.5250, lng: 128.1650 },
+        ],
+        lat: 36.415,
+        lng: 128.163,
+      },
+      {
+        name: '안동시',
+        bjdongs: [
+          { name: '풍천면', ri: '갈전리', lat: 36.5850, lng: 128.5150 },
+          { name: '풍산읍', ri: '노리', lat: 36.6050, lng: 128.6150 },
+          { name: '서후면', ri: '명리', lat: 36.6350, lng: 128.6750 },
+        ],
+        lat: 36.568,
+        lng: 128.729,
+      },
+      {
+        name: '의성군',
+        bjdongs: [
+          { name: '금성면', ri: '탑리리', lat: 36.2650, lng: 128.7150 },
+          { name: '봉양면', ri: '도원리', lat: 36.2950, lng: 128.6150 },
+          { name: '비안면', ri: '이두리', lat: 36.3520, lng: 128.4850 },
+        ],
+        lat: 36.352,
+        lng: 128.697,
+      },
+      {
+        name: '예천군',
+        bjdongs: [
+          { name: '호명읍', ri: '산합리', lat: 36.5850, lng: 128.4850 },
+          { name: '용문면', ri: '원류리', lat: 36.6850, lng: 128.3850 },
+          { name: '지보면', ri: '마전리', lat: 36.5450, lng: 128.3150 },
+        ],
+        lat: 36.657,
+        lng: 128.452,
+      },
+      {
+        name: '봉화군',
+        bjdongs: [
+          { name: '봉성면', ri: '봉양리', lat: 36.9150, lng: 128.7850 },
+          { name: '명호면', ri: '도천리', lat: 36.8850, lng: 128.8950 },
+          { name: '춘양면', ri: '의양리', lat: 37.0150, lng: 128.9150 },
+        ],
+        lat: 36.893,
+        lng: 128.732,
+      },
     ],
   },
   {
@@ -667,10 +862,43 @@ const REGION_DATA: { sido: string; code: string; count: number; sigungus: Sigung
     code: '42',
     count: 310,
     sigungus: [
-      { name: '춘천시', bjdongs: ['신북읍', '동면', '동산면', '신동면', '남면'], lat: 37.881, lng: 127.729 },
-      { name: '홍천군', bjdongs: ['홍천읍', '화촌면', '두촌면', '영귀미면', '남면'], lat: 37.697, lng: 127.888 },
-      { name: '횡성군', bjdongs: ['횡성읍', '우천면', '안흥면', '둔내면', '공근면'], lat: 37.491, lng: 127.985 },
-      { name: '평창군', bjdongs: ['평창읍', '미탄면', '방림면', '대화면', '봉평면'], lat: 37.370, lng: 128.390 },
+      {
+        name: '춘천시',
+        bjdongs: [
+          { name: '신북읍', ri: '율문리', lat: 37.9350, lng: 127.7550 },
+          { name: '동면', ri: '지내리', lat: 37.9150, lng: 127.8150 },
+          { name: '동산면', ri: '원창리', lat: 37.7950, lng: 127.7850 },
+        ],
+        lat: 37.881,
+        lng: 127.729,
+      },
+      {
+        name: '홍천군',
+        bjdongs: [
+          { name: '화촌면', ri: '송정리', lat: 37.7150, lng: 127.9650 },
+          { name: '두촌면', ri: '자은리', lat: 37.8150, lng: 128.0550 },
+        ],
+        lat: 37.697,
+        lng: 127.888,
+      },
+      {
+        name: '횡성군',
+        bjdongs: [
+          { name: '우천면', ri: '두곡리', lat: 37.4850, lng: 128.0650 },
+          { name: '안흥면', ri: '지구리', lat: 37.4150, lng: 128.1550 },
+        ],
+        lat: 37.491,
+        lng: 127.985,
+      },
+      {
+        name: '평창군',
+        bjdongs: [
+          { name: '대화면', ri: '대화리', lat: 37.4950, lng: 128.4550 },
+          { name: '봉평면', ri: '창동리', lat: 37.6150, lng: 128.3850 },
+        ],
+        lat: 37.370,
+        lng: 128.390,
+      },
     ],
   },
   {
@@ -678,10 +906,43 @@ const REGION_DATA: { sido: string; code: string; count: number; sigungus: Sigung
     code: '48',
     count: 425,
     sigungus: [
-      { name: '합천군', bjdongs: ['합천읍', '가야면', '야로면', '초계면', '삼가면'], lat: 35.566, lng: 128.165 },
-      { name: '창녕군', bjdongs: ['창녕읍', '남지읍', '고암면', '성산면', '대합면'], lat: 35.541, lng: 128.492 },
-      { name: '밀양시', bjdongs: ['삼랑진읍', '하남읍', '부북면', '상동면', '산외면'], lat: 35.503, lng: 128.746 },
-      { name: '의령군', bjdongs: ['의령읍', '가례면', '칠곡면', '대의면', '화정면'], lat: 35.322, lng: 128.261 },
+      {
+        name: '합천군',
+        bjdongs: [
+          { name: '초계면', ri: '원당리', lat: 35.5650, lng: 128.2550 },
+          { name: '가야면', ri: '야천리', lat: 35.7150, lng: 128.1150 },
+          { name: '삼가면', ri: '소오리', lat: 35.4150, lng: 128.1250 },
+        ],
+        lat: 35.566,
+        lng: 128.165,
+      },
+      {
+        name: '창녕군',
+        bjdongs: [
+          { name: '남지읍', ri: '아지리', lat: 35.3950, lng: 128.4550 },
+          { name: '대합면', ri: '대동리', lat: 35.6150, lng: 128.4850 },
+        ],
+        lat: 35.541,
+        lng: 128.492,
+      },
+      {
+        name: '밀양시',
+        bjdongs: [
+          { name: '삼랑진읍', ri: '미전리', lat: 35.3950, lng: 128.8150 },
+          { name: '하남읍', ri: '백산리', lat: 35.3850, lng: 128.7150 },
+        ],
+        lat: 35.503,
+        lng: 128.746,
+      },
+      {
+        name: '의령군',
+        bjdongs: [
+          { name: '가례면', ri: '괴진리', lat: 35.3450, lng: 128.2350 },
+          { name: '칠곡면', ri: '내조리', lat: 35.3350, lng: 128.2050 },
+        ],
+        lat: 35.322,
+        lng: 128.261,
+      },
     ],
   },
   {
@@ -689,10 +950,43 @@ const REGION_DATA: { sido: string; code: string; count: number; sigungus: Sigung
     code: '43',
     count: 280,
     sigungus: [
-      { name: '충주시', bjdongs: ['주덕읍', '살미면', '수안보면', '대소원면', '신니면'], lat: 36.991, lng: 127.926 },
-      { name: '제천시', bjdongs: ['봉양읍', '금성면', '청풍면', '수산면', '덕산면'], lat: 37.132, lng: 128.191 },
-      { name: '괴산군', bjdongs: ['괴산읍', '감물면', '칠성면', '문광면', '청천면'], lat: 36.815, lng: 127.786 },
-      { name: '음성군', bjdongs: ['음성읍', '금왕읍', '소이면', '원남면', '맹동면'], lat: 36.932, lng: 127.690 },
+      {
+        name: '충주시',
+        bjdongs: [
+          { name: '주덕읍', ri: '신양리', lat: 36.9750, lng: 127.7950 },
+          { name: '대소원면', ri: '대소리', lat: 36.9650, lng: 127.8450 },
+          { name: '신니면', ri: '용원리', lat: 37.0150, lng: 127.7150 },
+        ],
+        lat: 36.991,
+        lng: 127.926,
+      },
+      {
+        name: '제천시',
+        bjdongs: [
+          { name: '봉양읍', ri: '주포리', lat: 37.1450, lng: 128.1250 },
+          { name: '금성면', ri: '구룡리', lat: 37.0650, lng: 128.1850 },
+        ],
+        lat: 37.132,
+        lng: 128.191,
+      },
+      {
+        name: '괴산군',
+        bjdongs: [
+          { name: '감물면', ri: '오성리', lat: 36.8550, lng: 127.8550 },
+          { name: '칠성면', ri: '사은리', lat: 36.7850, lng: 127.8950 },
+        ],
+        lat: 36.815,
+        lng: 127.786,
+      },
+      {
+        name: '음성군',
+        bjdongs: [
+          { name: '금왕읍', ri: '무극리', lat: 36.9950, lng: 127.5950 },
+          { name: '맹동면', ri: '쌍정리', lat: 36.9150, lng: 127.5250 },
+        ],
+        lat: 36.932,
+        lng: 127.690,
+      },
     ],
   },
   {
@@ -700,10 +994,43 @@ const REGION_DATA: { sido: string; code: string; count: number; sigungus: Sigung
     code: '41',
     count: 195,
     sigungus: [
-      { name: '화성시', bjdongs: ['남양읍', '우정읍', '향남읍', '장안면', '마도면'], lat: 37.199, lng: 126.831 },
-      { name: '안성시', bjdongs: ['공도읍', '보개면', '금광면', '서운면', '미양면'], lat: 37.008, lng: 127.279 },
-      { name: '평택시', bjdongs: ['팽성읍', '안중읍', '포승읍', '청북읍', '진위면'], lat: 36.992, lng: 127.112 },
-      { name: '이천시', bjdongs: ['장호원읍', '부발읍', '신둔면', '백사면', '호법면'], lat: 37.272, lng: 127.435 },
+      {
+        name: '화성시',
+        bjdongs: [
+          { name: '우정읍', ri: '매향리', lat: 37.0550, lng: 126.7350 },
+          { name: '장안면', ri: '사곡리', lat: 37.0950, lng: 126.7950 },
+          { name: '송산면', ri: '고정리', lat: 37.2350, lng: 126.7150 },
+        ],
+        lat: 37.199,
+        lng: 126.831,
+      },
+      {
+        name: '안성시',
+        bjdongs: [
+          { name: '보개면', ri: '북가현리', lat: 37.0650, lng: 127.3450 },
+          { name: '미양면', ri: '양지리', lat: 36.9650, lng: 127.2750 },
+        ],
+        lat: 37.008,
+        lng: 127.279,
+      },
+      {
+        name: '평택시',
+        bjdongs: [
+          { name: '포승읍', ri: '원정리', lat: 36.9650, lng: 126.8450 },
+          { name: '청북읍', ri: '어연리', lat: 37.0350, lng: 126.9450 },
+        ],
+        lat: 36.992,
+        lng: 127.112,
+      },
+      {
+        name: '이천시',
+        bjdongs: [
+          { name: '장호원읍', ri: '노탑리', lat: 37.1150, lng: 127.6150 },
+          { name: '율면', ri: '고당리', lat: 37.0650, lng: 127.5850 },
+        ],
+        lat: 37.272,
+        lng: 127.435,
+      },
     ],
   },
 ];
@@ -778,8 +1105,8 @@ function buildNationwideParcels(): Parcel[] {
       const landCategory = CATEGORY_POOL[Math.floor(r5 * CATEGORY_POOL.length)];
       const zoning = ZONING_POOL[Math.floor(r6 * ZONING_POOL.length)];
 
-      // 🌟 바다로 빠지지 않도록 안전 육지 반경 이내(약 0.012도, 1.2km)로 미세 오프셋 제약
-      const offsetScale = typeof rawBjdong === 'object' ? 0.012 : 0.04;
+      // 🌟 바다로 빠지지 않도록 안전 육지 반경 이내(약 0.006도, 600m)로 미세 오프셋 제약
+      const offsetScale = typeof rawBjdong === 'object' ? 0.006 : 0.015;
       const latOffset = (pseudoRandom(seed + 7) - 0.5) * offsetScale;
       const lngOffset = (pseudoRandom(seed + 8) - 0.5) * offsetScale;
       const lat = parseFloat((baseLat + latOffset).toFixed(5));
@@ -830,10 +1157,12 @@ function buildNationwideParcels(): Parcel[] {
       const npvWon = Math.round(capexTotalWon * 0.45);
       const paybackYears = parseFloat((5.2 + pseudoRandom(seed + 19) * 2.8).toFixed(1));
 
-      // 🌟 국토부 지적도 1필지 정밀 규격: 지적도 속 1개 필지 크기(가로세로 약 50~80m)로 정밀화
+      // 🌟 물리적 실제 축척 계산 (1도 위도 약 111,000m, 1도 경도 약 91,000m)
+      // 10,000평(약 33,058㎡)일 경우 반경 약 102m, 가로세로 약 180~205m에 달하는 거대한 실제 축척으로 렌더링!
       const numVertices = 6 + Math.floor(pseudoRandom(seed + 20) * 3); // 6 ~ 8각형
-      const baseRadiusLat = 0.00022 + Math.sqrt(areaPyeong / 5000) * 0.00018;
-      const baseRadiusLng = 0.00026 + Math.sqrt(areaPyeong / 5000) * 0.00022;
+      const radiusMeters = Math.sqrt(areaSqm / Math.PI); // 등가 원형 반경 (m)
+      const baseRadiusLat = radiusMeters / 111000;
+      const baseRadiusLng = radiusMeters / 91000;
 
       const polygon: [number, number][] = [];
       for (let v = 0; v < numVertices; v++) {

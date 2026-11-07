@@ -441,8 +441,9 @@ export const MapView: React.FC<MapViewProps> = ({
     if (rightClickRealPolygon && rightClickRealPolygon.length >= 3) {
       targetPolygon = rightClickRealPolygon;
     } else {
-      const rLat = 0.00022 + Math.sqrt(data.estimatedPyeong / 5000) * 0.00018;
-      const rLng = 0.00026 + Math.sqrt(data.estimatedPyeong / 5000) * 0.00022;
+      const radiusMeters = Math.sqrt(data.estimatedSqm / Math.PI);
+      const rLat = radiusMeters / 111000;
+      const rLng = radiusMeters / 91000;
 
       // 8각 불규칙 지적도 형태 폴리곤 생성
       const rightClickPolygon: [number, number][] = [];
@@ -1049,40 +1050,45 @@ export const MapView: React.FC<MapViewProps> = ({
               >
                 <Popup>
                   {/* 🌟 대표님 요청 1: 좌클릭 팝업창도 고대비 다크 테마로 선명하게 개선 */}
-                  <div className="p-1.5 text-slate-100 min-w-[210px] max-w-[250px] font-sans">
-                    <div className="flex items-center space-x-1.5 mb-2 pb-1.5 border-b border-slate-700/80">
-                      <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
-                        {parcel.landCategory}
-                      </span>
-                      <span className="text-xs font-bold text-white truncate" title={parcel.address}>
-                        {parcel.address}
-                      </span>
-                    </div>
+                  {(() => {
+                    const target = (isSelected && selectedParcel) ? selectedParcel : parcel;
+                    return (
+                      <div className="p-1.5 text-slate-100 min-w-[210px] max-w-[250px] font-sans">
+                        <div className="flex items-center space-x-1.5 mb-2 pb-1.5 border-b border-slate-700/80">
+                          <span className="text-[10px] font-extrabold px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
+                            {target.landCategory}
+                          </span>
+                          <span className="text-xs font-bold text-white truncate" title={target.address}>
+                            {target.address}
+                          </span>
+                        </div>
 
-                    <div className="space-y-1 text-xs text-slate-300">
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400">면적</span>
-                        <span className="font-bold text-white font-mono">
-                          {parcel.areaPyeong.toLocaleString()}평 <span className="text-[10px] text-slate-400">({parcel.areaSqm.toLocaleString()}㎡)</span>
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-slate-400">종합 적합도</span>
-                        <span className="font-extrabold text-amber-400">
-                          {parcel.suitability} ({parcel.suitabilityScore}점)
-                        </span>
-                      </div>
-                    </div>
+                        <div className="space-y-1 text-xs text-slate-300">
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-400">면적</span>
+                            <span className="font-bold text-white font-mono">
+                              {target.areaPyeong.toLocaleString()}평 <span className="text-[10px] text-slate-400">({target.areaSqm.toLocaleString()}㎡)</span>
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-400">종합 적합도</span>
+                            <span className="font-extrabold text-amber-400">
+                              {target.suitability} ({target.suitabilityScore}점)
+                            </span>
+                          </div>
+                        </div>
 
-                    <button
-                      type="button"
-                      onClick={() => onSelectParcel(parcel)}
-                      className="mt-2.5 w-full py-1.5 text-xs font-bold bg-amber-500 text-slate-950 rounded hover:bg-amber-400 transition shadow cursor-pointer flex items-center justify-center space-x-1"
-                    >
-                      <span>상세 분석 열기</span>
-                      <ArrowRight className="w-3 h-3" />
-                    </button>
-                  </div>
+                        <button
+                          type="button"
+                          onClick={() => onSelectParcel(target)}
+                          className="mt-2.5 w-full py-1.5 text-xs font-bold bg-amber-500 text-slate-950 rounded hover:bg-amber-400 transition shadow cursor-pointer flex items-center justify-center space-x-1"
+                        >
+                          <span>상세 분석 열기</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                      </div>
+                    );
+                  })()}
                 </Popup>
               </Marker>
 
