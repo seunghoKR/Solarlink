@@ -23,6 +23,7 @@ import {
   FileText,
   ExternalLink,
   Search,
+  X,
 } from 'lucide-react';
 
 interface MapViewProps {
@@ -98,30 +99,21 @@ const MapEventHandler: React.FC<{
   return null;
 };
 
-// 🌟 대표님 요청: 국토부 연속지적도가 켜져 있을 때 지적도가 절대 사라지지 않도록 18.0x 자동 줌인 & 최소 줌(17.5x) 락
+// 🌟 대표님 요청: 줌 제한 완전 해제 (전국 6.0x ~ 초정밀 19.0x 전 구간 자유로운 확대/축소 보장)
 const CadastralZoomController: React.FC<{
   showCadastral: boolean;
   onZoomChange: (zoom: number) => void;
-}> = ({ showCadastral, onZoomChange }) => {
+}> = () => {
   const map = useMap();
 
   useEffect(() => {
     try {
-      if (showCadastral) {
-        if (map.getZoom() < 17.5) {
-          map.setZoom(18.0, { animate: false });
-          onZoomChange(18.0);
-        }
-        map.setMinZoom(17.5);
-        map.setMaxZoom(19);
-      } else {
-        map.setMinZoom(6);
-        map.setMaxZoom(19);
-      }
+      map.setMinZoom(6);
+      map.setMaxZoom(19);
     } catch (err) {
-      console.warn('지적도 줌 제어 예외 방지:', err);
+      console.warn('줌 제어 예외 방지:', err);
     }
-  }, [showCadastral, map, onZoomChange]);
+  }, [map]);
 
   return null;
 };
@@ -217,7 +209,8 @@ export const MapView: React.FC<MapViewProps> = ({
   const [outlineOnly, setOutlineOnly] = useState<boolean>(false); // 🌟 활성화 시 내부 투명, 비활성화 시 50% 투명도 면적 채우기
   const [showCadastral, setShowCadastral] = useState<boolean>(true); // 🌟 대표님 요청: 전국 연속지적도(지번 경계선) 레이어
   const [showGridLines, setShowGridLines] = useState<boolean>(true); // 🌟 대표님 요청: re100market 특화 한전 계통 연계선 및 변전소 시각화
-  const [currentZoom, setCurrentZoom] = useState<number>(selectedParcel ? 18 : 18);
+  const [currentZoom, setCurrentZoom] = useState<number>(selectedParcel ? 18 : 7);
+  const [showRightClickGuide, setShowRightClickGuide] = useState<boolean>(true); // 마우스 우클릭 안내 토스트 표시 여부
 
   const currentBoundsRef = useRef<SearchBounds | null>(null);
   const handleBoundsUpdate = React.useCallback(
@@ -816,11 +809,21 @@ export const MapView: React.FC<MapViewProps> = ({
         </div>
       </div>
 
-      {/* 우클릭 안내 토스트 툴팁 (하단 우측) */}
-      <div className="absolute bottom-6 right-6 z-[900] bg-slate-900/85 backdrop-blur-md border border-amber-500/30 rounded-xl px-3.5 py-2 shadow-2xl flex items-center space-x-2 text-xs text-slate-200 pointer-events-none animate-in fade-in">
-        <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
-        <span>지도 임의 지점을 <strong>마우스 우클릭</strong>하면 주소·지목·평수가 즉시 분석됩니다!</span>
-      </div>
+      {/* 우클릭 안내 토스트 툴팁 (하단 우측 - 줌 컨트롤러와 겹치지 않도록 right-24 배치) */}
+      {showRightClickGuide && (
+        <div className="absolute bottom-6 right-24 z-[900] bg-slate-900/90 backdrop-blur-md border border-amber-500/40 rounded-xl px-3.5 py-2 shadow-2xl flex items-center space-x-2 text-xs text-slate-200 pointer-events-auto select-none animate-in fade-in">
+          <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+          <span>지도 임의 지점을 <strong className="text-amber-300">마우스 우클릭</strong>하면 주소·지목·평수가 즉시 분석됩니다!</span>
+          <button
+            type="button"
+            onClick={() => setShowRightClickGuide(false)}
+            className="ml-1 p-0.5 rounded hover:bg-slate-800 text-slate-400 hover:text-slate-200 transition cursor-pointer"
+            title="안내 닫기"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* 범례 */}
       <div className="absolute bottom-6 left-6 z-[900] bg-slate-900/90 backdrop-blur-md border border-slate-700/80 rounded-lg p-3 shadow-xl text-xs space-y-2 select-none">
@@ -874,7 +877,7 @@ export const MapView: React.FC<MapViewProps> = ({
         <ZoomSliderControl
           currentZoom={currentZoom}
           onZoomChange={setCurrentZoom}
-          minZoom={showCadastral ? 17.5 : 6}
+          minZoom={6}
           maxZoom={19}
         />
 
@@ -918,7 +921,7 @@ export const MapView: React.FC<MapViewProps> = ({
           />
         )}
 
-        {/* 4. 국토교통부 공식 연속지적도(WMS) 레이어 - 전국 모든 필지의 지번 경계선 오버레이 (줌 17.5~19 정밀 표출) */}
+        {/* 4. 국토교통부 공식 연속지적도(WMS) 레이어 - 전국 모든 필지의 지번 경계선 오버레이 (줌 17~19 정밀 표출) */}
         {showCadastral && (
           <WMSTileLayer
             url="https://api.vworld.kr/req/wms"

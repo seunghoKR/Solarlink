@@ -118,7 +118,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           title="Lifety Solar Intelligence 메인"
         />
         <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-extrabold bg-amber-500/15 text-amber-300 border border-amber-500/30 tracking-tight">
-          v1.1.6
+          v1.1.7
         </span>
       </div>
 
