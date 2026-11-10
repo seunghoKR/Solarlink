@@ -31,6 +31,8 @@ interface FilterPanelProps {
   onResetFilters: () => void;
   showBookmarksOnly?: boolean;
   onDisableBookmarksOnly?: () => void;
+  onSearchCurrentMap?: (criteria: FilterCriteria) => void;
+  isLiveSearching?: boolean;
 }
 
 const ALL_CATEGORIES: LandCategory[] = [
@@ -58,6 +60,13 @@ const ALL_ZONINGS: (Zoning | '전체')[] = [
   '일반상업지역',
 ];
 
+const QUICK_PYEONG_PRESETS = [
+  { label: '전체', min: 100, max: 0 },
+  { label: '5천~1만', min: 5000, max: 10000 },
+  { label: '1만~3만', min: 10000, max: 30000 },
+  { label: '3만평+', min: 30000, max: 0 },
+];
+
 export const FilterPanel: React.FC<FilterPanelProps> = ({
   parcels,
   totalPoolCount,
@@ -68,6 +77,8 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
   onResetFilters,
   showBookmarksOnly = false,
   onDisableBookmarksOnly,
+  onSearchCurrentMap,
+  isLiveSearching = false,
 }) => {
   // 사용자가 버튼을 누르거나 조작할 수 있는 내부 초안(Draft) 상태
   const [draftMinPyeong, setDraftMinPyeong] = useState<number>(activeCriteria.minPyeong);
@@ -80,40 +91,46 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
   // 리스트 표시 개수 제한 (브라우저 스크롤 60fps 고속 유지)
   const [displayLimit, setDisplayLimit] = useState<number>(60);
 
+  const buildCriteria = (cats?: LandCategory[]): FilterCriteria => ({
+    minPyeong: Number(draftMinPyeong) || 0,
+    maxPyeong: draftMaxPyeong > 0 ? Number(draftMaxPyeong) : 0,
+    selectedCategories: cats ?? draftCategories,
+    selectedZoning: draftZoning,
+    minGridCapacity: Number(draftMinGrid) || 0,
+    strictRegulationOnly: draftStrictRegulation,
+  });
+
   // 🌟 대표님 요청: 지목 토글 시 실시간으로 즉시 필터링 반영 + 검색 버튼으로도 언제든 확정 가능!
   const handleToggleCategory = (category: LandCategory) => {
     const nextCategories = draftCategories.includes(category)
       ? draftCategories.filter((c) => c !== category)
       : [...draftCategories, category];
     setDraftCategories(nextCategories);
+    onApplyCriteria(buildCriteria(nextCategories));
+    setDisplayLimit(60);
+  };
+
+  const handleQuickPyeong = (min: number, max: number) => {
+    setDraftMinPyeong(min);
+    setDraftMaxPyeong(max);
     onApplyCriteria({
-      minPyeong: Number(draftMinPyeong) || 0,
-      maxPyeong: Number(draftMaxPyeong) || 100000,
-      selectedCategories: nextCategories,
-      selectedZoning: draftZoning,
-      minGridCapacity: Number(draftMinGrid) || 0,
-      strictRegulationOnly: draftStrictRegulation,
+      ...buildCriteria(),
+      minPyeong: min,
+      maxPyeong: max,
     });
     setDisplayLimit(60);
   };
 
   const handleExecuteSearch = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    onApplyCriteria({
-      minPyeong: Number(draftMinPyeong) || 0,
-      maxPyeong: Number(draftMaxPyeong) || 100000,
-      selectedCategories: draftCategories,
-      selectedZoning: draftZoning,
-      minGridCapacity: Number(draftMinGrid) || 0,
-      strictRegulationOnly: draftStrictRegulation,
-    });
+    onApplyCriteria(buildCriteria());
     setDisplayLimit(60);
   };
 
   const handleReset = () => {
     setDraftMinPyeong(100);
-    setDraftMaxPyeong(10000);
-    setDraftCategories(['잡종지', '임야', '전', '답', '염전']);
+    setDraftMaxPyeong(0);
+    setDraftCategories([...ALL_CATEGORIES]);
     setDraftZoning('전체');
     setDraftMinGrid(0);
     setDraftStrictRegulation(false);
@@ -166,7 +183,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
             <div className="flex items-center justify-between mb-1.5">
               <span className="font-semibold text-slate-200 text-xs">희망 면적 (평수)</span>
               <span className="text-amber-400 font-bold text-xs font-mono">
-                {draftMinPyeong.toLocaleString()}평 ~ {draftMaxPyeong.toLocaleString()}평
+                {draftMinPyeong.toLocaleString()}평 ~ {draftMaxPyeong > 0 ? `${draftMaxPyeong.toLocaleString()}평` : '제한없음'}
               </span>
             </div>
             <div className="flex items-center space-x-2">
@@ -183,15 +200,37 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
               <input
                 type="number"
                 min={0}
-                step={100}
-                value={draftMaxPyeong}
+                step={500}
+                value={draftMaxPyeong === 0 ? '' : draftMaxPyeong}
                 onChange={(e) => setDraftMaxPyeong(Math.max(0, Number(e.target.value) || 0))}
-                className="w-1/2 bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-slate-100 text-right text-xs focus:outline-none focus:border-amber-500 font-mono"
-                placeholder="최대평"
+                className="w-1/2 bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-slate-100 text-right text-xs focus:outline-none focus:border-amber-500 font-mono placeholder-slate-500"
+                placeholder="제한없음"
               />
             </div>
+            <div className="grid grid-cols-4 gap-1 mt-1.5">
+              {QUICK_PYEONG_PRESETS.map((preset) => {
+                const active = draftMinPyeong === preset.min && draftMaxPyeong === preset.max;
+                return (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => handleQuickPyeong(preset.min, preset.max)}
+                    className={`py-1 rounded text-[11px] font-semibold border transition cursor-pointer ${
+                      active
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                        : 'bg-slate-800/80 text-slate-400 border-slate-700/60 hover:text-slate-200'
+                    }`}
+                  >
+                    {preset.label}
+                  </button>
+                );
+              })}
+            </div>
             <p className="text-[11px] text-slate-400 mt-1">
-              * ㎡ 환산: 약 {(draftMinPyeong * 3.305785).toLocaleString(undefined, { maximumFractionDigits: 0 })}㎡ ~ {(draftMaxPyeong * 3.305785).toLocaleString(undefined, { maximumFractionDigits: 0 })}㎡
+              * ㎡ 환산: 약 {(draftMinPyeong * 3.305785).toLocaleString(undefined, { maximumFractionDigits: 0 })}㎡ ~{' '}
+              {draftMaxPyeong > 0
+                ? `${(draftMaxPyeong * 3.305785).toLocaleString(undefined, { maximumFractionDigits: 0 })}㎡`
+                : '제한없음'}
             </p>
           </div>
 
@@ -275,7 +314,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
         </div>
 
         {/* 🌟 3. 대표님 요청: 검색 실행 버튼 (Search Action Bar) */}
-        <div className="p-3 bg-slate-900 border-b border-slate-800 shadow-md">
+        <div className="p-3 bg-slate-900 border-b border-slate-800 shadow-md space-y-2">
           <button
             type="submit"
             className="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-bold text-sm flex items-center justify-center space-x-2 transition shadow-lg shadow-amber-500/25 cursor-pointer active:scale-98"
@@ -283,6 +322,19 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
             <Search className="w-4 h-4 text-slate-950 stroke-[2.5]" />
             <span>설정 조건으로 부지 검색</span>
           </button>
+          {onSearchCurrentMap && (
+            <button
+              type="button"
+              disabled={isLiveSearching}
+              onClick={() => onSearchCurrentMap(buildCriteria())}
+              className="w-full py-2 px-3 rounded-lg bg-sky-950/80 hover:bg-sky-900 text-sky-300 border border-sky-600/50 font-semibold text-xs flex items-center justify-center space-x-1.5 transition cursor-pointer disabled:opacity-60"
+              title="현재 보고 있는 지도 화면 안에서 국토부 VWorld 전 필지를 실시간 조건 검색합니다"
+            >
+              <span>
+                {isLiveSearching ? '⏳ 국토부 DB 실시간 발굴 중...' : '📡 현재 지도 영역 국토부 실필지 발굴'}
+              </span>
+            </button>
+          )}
         </div>
 
         {/* 4. Candidate List Header */}

@@ -7,7 +7,7 @@
  * 브라우저 CORS 제약 없는 초고속 JSONP 방식으로 실시간 쿼리합니다.
  */
 
-import type { LandCategory, Zoning } from '../types/solar';
+import type { LandCategory, Zoning, Parcel } from '../types/solar';
 
 const VWORLD_KEY = import.meta.env.VITE_VWORLD_API_KEY || 'E810A4B0-5AFE-4FF7-9E1F-2B905CFAD2B7';
 const DOMAIN = 're100life.com';
@@ -414,4 +414,452 @@ export async function fetchRealCadastralByAddress(
     ...feat,
     realCoords: targetCoords,
   };
+}
+
+export interface SearchBounds {
+  south: number;
+  west: number;
+  north: number;
+  east: number;
+}
+
+export interface BoundsSearchOptions {
+  bounds: SearchBounds;
+  minPyeong: number;
+  maxPyeong: number;
+  selectedCategories?: LandCategory[];
+}
+
+export interface BoundsSearchResult {
+  parcels: Parcel[];
+  totalRawCount: number;
+  status: 'OK' | 'EMPTY' | 'TOO_WIDE' | 'ERROR';
+}
+
+function stringHash(str: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return Math.abs(hash);
+}
+
+function pseudoRandom(seed: number): number {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
+}
+
+function pointInPolygon(lat: number, lng: number, polygon: [number, number][]): boolean {
+  let inside = false;
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const xi = polygon[i][0];
+    const yi = polygon[i][1];
+    const xj = polygon[j][0];
+    const yj = polygon[j][1];
+    const intersect = ((yi > lng) !== (yj > lng)) && (lat < (xj - xi) * (lng - yi) / (yj - yi) + xi);
+    if (intersect) inside = !inside;
+  }
+  return inside;
+}
+
+export function calculatePolygonCentroid(polygon: [number, number][]): [number, number] {
+  if (!polygon || polygon.length === 0) return [35.8, 127.0];
+  let minLat = Infinity;
+  let maxLat = -Infinity;
+  let minLng = Infinity;
+  let maxLng = -Infinity;
+  let sumLat = 0;
+  let sumLng = 0;
+  for (const [lat, lng] of polygon) {
+    if (lat < minLat) minLat = lat;
+    if (lat > maxLat) maxLat = lat;
+    if (lng < minLng) minLng = lng;
+    if (lng > maxLng) maxLng = lng;
+    sumLat += lat;
+    sumLng += lng;
+  }
+  const avgLat = sumLat / polygon.length;
+  const avgLng = sumLng / polygon.length;
+  if (pointInPolygon(avgLat, avgLng, polygon)) {
+    return [Number(avgLat.toFixed(6)), Number(avgLng.toFixed(6))];
+  }
+  const centerLat = (minLat + maxLat) / 2;
+  const centerLng = (minLng + maxLng) / 2;
+  let bestPoint: [number, number] | null = null;
+  let minD = Infinity;
+  for (let i = 1; i < 9; i++) {
+    const lat = minLat + (maxLat - minLat) * i / 9;
+    for (let j = 1; j < 9; j++) {
+      const lng = minLng + (maxLng - minLng) * j / 9;
+      if (pointInPolygon(lat, lng, polygon)) {
+        const d = Math.hypot(lat - centerLat, lng - centerLng);
+        if (d < minD) {
+          minD = d;
+          bestPoint = [Number(lat.toFixed(6)), Number(lng.toFixed(6))];
+        }
+      }
+    }
+  }
+  return bestPoint || [Number(avgLat.toFixed(6)), Number(avgLng.toFixed(6))];
+}
+
+const DEFAULT_ZONINGS: Zoning[] = [
+  '계획관리지역',
+  '생산관리지역',
+  '보전관리지역',
+  '농림지역',
+  '자연환경보전지역',
+  '자연녹지지역',
+];
+
+function synthesizeDiscoveredParcel(
+  raw: {
+    pnu: string;
+    address: string;
+    sido: string;
+    sigungu: string;
+    bjdong: string;
+    emd?: string;
+    landCategory: LandCategory;
+    areaSqm: number;
+    areaPyeong: number;
+    coordinates: [number, number];
+    polygon: [number, number][];
+    zoning?: Zoning;
+    roadAddress?: string;
+    cadastralJibun?: string;
+  },
+  idx = 0,
+  customId?: string
+): Parcel {
+  const seed = stringHash(raw.pnu || raw.address) + idx * 17;
+  const [lat, lng] = raw.coordinates;
+  const areaSqm = raw.areaSqm;
+  const areaPyeong = raw.areaPyeong;
+  const cat = raw.landCategory;
+  const zoning = raw.zoning || DEFAULT_ZONINGS[Math.floor(pseudoRandom(seed + 1) * DEFAULT_ZONINGS.length)];
+
+  const dlAvailable = parseFloat((0.3 + pseudoRandom(seed + 2) * 6.9).toFixed(1));
+  const gridStatus: '여유' | '보통' | '포화' = dlAvailable >= 2 ? '여유' : dlAvailable >= 0.8 ? '보통' : '포화';
+
+  const isForest = cat === '임야';
+  const slope = parseFloat(((isForest ? 4.5 : 1.2) + pseudoRandom(seed + 3) * (isForest ? 14 : 8.5)).toFixed(1));
+  const resDist = Math.floor(140 + pseudoRandom(seed + 4) * 580);
+  const roadDist = Math.floor(70 + pseudoRandom(seed + 5) * 320);
+
+  const resPass = resDist >= 200;
+  const roadPass = roadDist >= 100;
+  const slopePass = slope <= 15;
+
+  let suitability: '예비적합' | '조건부' | '제한';
+  let score: number;
+  if (resPass && roadPass && slopePass && dlAvailable >= 1.0) {
+    suitability = '예비적합';
+    score = Math.floor(88 + pseudoRandom(seed + 6) * 11);
+  } else if (!slopePass || resDist < 150) {
+    suitability = '제한';
+    score = Math.floor(35 + pseudoRandom(seed + 6) * 25);
+  } else {
+    suitability = '조건부';
+    score = Math.floor(65 + pseudoRandom(seed + 6) * 22);
+  }
+
+  const effectiveArea = Math.round(areaSqm * 0.82);
+  const capacityKwp = Math.max(10, Math.round(effectiveArea / 14));
+  const annualGenKwh = Math.round(capacityKwp * 3.75 * 365);
+  const capex = Math.round(capacityKwp * 1250000);
+  const revenue = Math.round(annualGenKwh * 170);
+  const opex = Math.round(capex * 0.018);
+  const irr = parseFloat((6.8 + pseudoRandom(seed + 7) * 4.2).toFixed(1));
+  const npv = Math.round(capex * 0.45);
+  const payback = parseFloat((5.2 + pseudoRandom(seed + 8) * 2.6).toFixed(1));
+  const subDist = parseFloat((1.8 + pseudoRandom(seed + 9) * 6.2).toFixed(1));
+  const dl1Dist = parseFloat((0.7 + pseudoRandom(seed + 10) * 1.5).toFixed(1));
+  const dl2Dist = parseFloat((dl1Dist + 1.1 + pseudoRandom(seed + 11) * 1.5).toFixed(1));
+  const dl3Dist = parseFloat((dl2Dist + 1.4 + pseudoRandom(seed + 12) * 1.8).toFixed(1));
+
+  const dl2Avail = parseFloat(Math.max(0.3, dlAvailable * 0.65).toFixed(1));
+  const dl3Avail = parseFloat(Math.max(0.1, dlAvailable * 0.25).toFixed(1));
+
+  const dl2Status: '여유' | '보통' | '포화' = dl2Avail >= 2 ? '여유' : dl2Avail >= 0.8 ? '보통' : '포화';
+  const dl3Status: '여유' | '보통' | '포화' = dl3Avail >= 2 ? '여유' : dl3Avail >= 0.8 ? '보통' : '포화';
+
+  const dlBaseName = raw.bjdong || raw.emd || raw.sigungu;
+  const dls = [
+    {
+      name: `${dlBaseName}DL #${(idx % 3) + 1}`,
+      availableMw: dlAvailable,
+      status: gridStatus,
+      distanceKm: dl1Dist,
+      estimatedInterconnectionCostWon: Math.round(dl1Dist * 45000000),
+      isRecommended: true,
+    },
+    {
+      name: `${raw.sigungu}DL #${((idx + 1) % 4) + 1}`,
+      availableMw: dl2Avail,
+      status: dl2Status,
+      distanceKm: dl2Dist,
+      estimatedInterconnectionCostWon: Math.round(dl2Dist * 45000000),
+    },
+    {
+      name: `연계선로DL #${((idx + 2) % 5) + 1}`,
+      availableMw: dl3Avail,
+      status: dl3Status,
+      distanceKm: dl3Dist,
+      estimatedInterconnectionCostWon: Math.round(dl3Dist * 45000000),
+    },
+  ];
+
+  let basePricePerPyeong = 70000;
+  if (cat === '잡종지') basePricePerPyeong = 95000;
+  else if (cat === '임야') basePricePerPyeong = 35000;
+  else if (cat === '전') basePricePerPyeong = 75000;
+  else if (cat === '답') basePricePerPyeong = 65000;
+  else if (cat === '염전') basePricePerPyeong = 48000;
+  else if (cat === '대지') basePricePerPyeong = 135000;
+
+  const avgTradePrice = Math.round(basePricePerPyeong * (0.85 + pseudoRandom(seed + 13) * 0.35));
+  const estimatedLandPrice = Math.round(areaPyeong * avgTradePrice);
+  const roadRand = pseudoRandom(seed + 14);
+  const roadAccess =
+    roadRand > 0.4
+      ? '폭 4m 포장 농로 접면 (개발행위 진입로 확보)'
+      : roadRand > 0.12
+      ? '2차선 아스팔트 포장도로 접면 (진입 양호)'
+      : '맹지 (인접 사유지 진입로 개설 협의 필요)';
+
+  const ownRand = pseudoRandom(seed + 15);
+  const ownershipType =
+    ownRand > 0.3 ? '개인' : ownRand > 0.1 ? '법인' : ownRand > 0.04 ? '국유지/공유지' : '종중';
+
+  return {
+    id: customId || `rp_${raw.pnu}`,
+    pnu: raw.pnu,
+    address: raw.address,
+    roadAddress: raw.roadAddress,
+    cadastralJibun: raw.cadastralJibun,
+    sido: raw.sido,
+    sigungu: raw.sigungu,
+    bjdong: raw.bjdong || raw.emd || '',
+    landCategory: cat,
+    areaPyeong,
+    areaSqm,
+    zoning,
+    officialPrice: Math.floor(15000 + pseudoRandom(seed + 16) * 45000),
+    coordinates: [lat, lng],
+    polygon: raw.polygon,
+    slopeDegree: slope,
+    aspect: pseudoRandom(seed + 17) > 0.5 ? '정남향 (180°)' : '남동향 (150°)',
+    suitability,
+    suitabilityScore: score,
+    regulationChecks: {
+      residentialDistance: {
+        distance: resDist,
+        required: 200,
+        pass: resPass,
+        ordinance: `${raw.sigungu} 도시계획조례 제20조`,
+      },
+      roadDistance: {
+        distance: roadDist,
+        required: 100,
+        pass: roadPass,
+        ordinance: '군도 및 지방도 이격기준 완충구역',
+      },
+      protectionZone: {
+        intersected: false,
+        zoneName: '해당없음',
+        areaRatio: 0,
+      },
+      slopeCheck: {
+        degree: slope,
+        limit: 15,
+        pass: slopePass,
+      },
+    },
+    grid: {
+      substationName: `${raw.sigungu}변전소`,
+      substationDistanceKm: subDist,
+      substationCoordinates: [
+        parseFloat((lat + (pseudoRandom(seed + 18) - 0.5) * 0.05).toFixed(5)),
+        parseFloat((lng + (pseudoRandom(seed + 19) - 0.5) * 0.06).toFixed(5)),
+      ],
+      substationCapacityTotalMw: parseFloat((dlAvailable * 3.5 + 4.2).toFixed(1)),
+      mtrNumber: `#${(idx % 3) + 1} M.Tr`,
+      mtrAvailableMw: parseFloat((dlAvailable * 1.3).toFixed(1)),
+      dlName: `${dlBaseName}DL #${(idx % 3) + 1}`,
+      availableCapacityMw: dlAvailable,
+      status: gridStatus,
+      updatedAt: '2026-11-10',
+      distributionLines: dls,
+    },
+    realEstate: {
+      avgTradingPricePerPyeong: avgTradePrice,
+      estimatedLandPriceTotalWon: estimatedLandPrice,
+      roadAccess,
+      isLandlocked: roadAccess.includes('맹지'),
+      ownershipType,
+      recentTradesCount: Math.floor(3 + pseudoRandom(seed + 20) * 11),
+    },
+    solar: {
+      ghiAnnualAvg: 3.75,
+      effectiveAreaSqm: effectiveArea,
+      estimatedCapacityKwp: capacityKwp,
+      annualGenerationKwh: annualGenKwh,
+    },
+    financials: {
+      capexTotalWon: capex,
+      annualRevenueWon: revenue,
+      annualOpexWon: opex,
+      irrPercent: irr,
+      npvWon: npv,
+      paybackYears: payback,
+    },
+  };
+}
+
+const VALID_JIMOK_SET = new Set([
+  '전', '답', '임', '임야', '잡', '잡종지', '과', '과수원', '목', '목장용지', '염', '염전', '대', '대지'
+]);
+
+function parseGeometryCoordinates(geometry: any): [number, number][] {
+  if (geometry?.type === 'MultiPolygon' && geometry.coordinates?.[0]?.[0]) {
+    return geometry.coordinates[0][0].map((pt: [number, number]) => [pt[1], pt[0]]);
+  } else if (geometry?.type === 'Polygon' && geometry.coordinates?.[0]) {
+    return geometry.coordinates[0].map((pt: [number, number]) => [pt[1], pt[0]]);
+  }
+  return [];
+}
+
+function cleanJibunText(val: string): string {
+  return val ? val.replace(/^산\s*/, '산').trim() : '';
+}
+
+/**
+ * 🌟 국토교통부 VWorld 공간 영역(BOX) 실시간 지적도 쿼리
+ * 현재 지도 화면의 위경도 Bounding Box 내 실존 필지를 조건 검색합니다.
+ */
+export function searchParcelsInBounds(options: BoundsSearchOptions): Promise<BoundsSearchResult> {
+  const { bounds, minPyeong, maxPyeong, selectedCategories } = options;
+  const latDiff = Math.abs(bounds.north - bounds.south);
+  const lngDiff = Math.abs(bounds.east - bounds.west);
+
+  if (latDiff > 0.35 || lngDiff > 0.45) {
+    return Promise.resolve({ parcels: [], totalRawCount: 0, status: 'TOO_WIDE' });
+  }
+
+  const minSqm = Math.max(330, Math.floor((minPyeong || 0) * 3.305785));
+  const attrFilter =
+    maxPyeong > 0
+      ? `parea:between:${minSqm},${Math.ceil(maxPyeong * 3.305785)}`
+      : `parea:>=:${minSqm}`;
+
+  return new Promise((resolve) => {
+    const callbackName = `__vworld_box_${Date.now()}_${Math.floor(Math.random() * 10000)}`;
+    const timer = setTimeout(() => {
+      cleanup();
+      resolve({ parcels: [], totalRawCount: 0, status: 'ERROR' });
+    }, 8000);
+
+    const cleanup = () => {
+      clearTimeout(timer);
+      try {
+        delete (window as any)[callbackName];
+      } catch {
+        (window as any)[callbackName] = undefined;
+      }
+      const el = document.getElementById(callbackName);
+      if (el && el.parentNode) {
+        el.parentNode.removeChild(el);
+      }
+    };
+
+    (window as any)[callbackName] = (data: any) => {
+      cleanup();
+      try {
+        const status = data?.response?.status;
+        if (status === 'NOT_FOUND') {
+          resolve({ parcels: [], totalRawCount: 0, status: 'EMPTY' });
+          return;
+        }
+        if (status !== 'OK') {
+          resolve({ parcels: [], totalRawCount: 0, status: 'ERROR' });
+          return;
+        }
+
+        const features = data?.response?.result?.featureCollection?.features || [];
+        const catFilterSet = selectedCategories && selectedCategories.length > 0 ? new Set(selectedCategories) : null;
+        const results: Parcel[] = [];
+        const seenPnu = new Set<string>();
+
+        features.forEach((feat: any, idx: number) => {
+          const props = feat?.properties || {};
+          const rawJimok = (props.jimok || '').trim();
+          if (!props.pnu || seenPnu.has(props.pnu) || !VALID_JIMOK_SET.has(rawJimok)) return;
+
+          const normalizedJimok = normalizeJimok(rawJimok);
+          if (catFilterSet && !catFilterSet.has(normalizedJimok)) return;
+
+          const polyCoords = parseGeometryCoordinates(feat.geometry);
+          if (polyCoords.length < 3) return;
+
+          const pareaSqm = Math.round(parseFloat(props.parea || '0'));
+          const pareaPyeong = Math.round(pareaSqm * 0.3025);
+
+          if (pareaPyeong < minPyeong || (maxPyeong > 0 && pareaPyeong > maxPyeong)) return;
+
+          const cleanJibun = cleanJibunText(props.jibun || '');
+          const fullAddr = [props.sido_nm, props.sgg_nm, props.emd_nm, props.ri_nm, cleanJibun]
+            .filter(Boolean)
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+          if (!fullAddr) return;
+          seenPnu.add(props.pnu);
+
+          const centroid = calculatePolygonCentroid(polyCoords);
+          results.push(
+            synthesizeDiscoveredParcel(
+              {
+                pnu: props.pnu,
+                address: fullAddr,
+                sido: props.sido_nm || '',
+                sigungu: props.sgg_nm || '',
+                bjdong: props.ri_nm || props.emd_nm || '',
+                emd: props.emd_nm || '',
+                landCategory: normalizedJimok,
+                areaSqm: pareaSqm,
+                areaPyeong: pareaPyeong,
+                coordinates: centroid,
+                polygon: polyCoords,
+              },
+              idx,
+              `live_${props.pnu}`
+            )
+          );
+        });
+
+        results.sort((a, b) => b.areaPyeong - a.areaPyeong);
+        resolve({
+          parcels: results,
+          totalRawCount: features.length,
+          status: results.length > 0 ? 'OK' : 'EMPTY',
+        });
+      } catch (err) {
+        console.warn('VWorld 영역 검색 파싱 에러:', err);
+        resolve({ parcels: [], totalRawCount: 0, status: 'ERROR' });
+      }
+    };
+
+    const bboxStr = `${bounds.west.toFixed(5)},${bounds.south.toFixed(5)},${bounds.east.toFixed(5)},${bounds.north.toFixed(5)}`;
+    const script = document.createElement('script');
+    script.id = callbackName;
+    script.src = `https://api.vworld.kr/req/data?service=data&request=GetFeature&data=LT_C_LANDINFOBASEMAP&key=${VWORLD_KEY}&domain=${DOMAIN}&format=json&crs=EPSG:4326&size=100&geomFilter=BOX(${bboxStr})&attrFilter=${encodeURIComponent(attrFilter)}&callback=${callbackName}`;
+    script.onerror = () => {
+      cleanup();
+      resolve({ parcels: [], totalRawCount: 0, status: 'ERROR' });
+    };
+    document.head.appendChild(script);
+  });
 }

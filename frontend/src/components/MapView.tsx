@@ -14,13 +14,15 @@ import {
 import L from 'leaflet';
 import type { Parcel, RegionSummary } from '../types/solar';
 import { reverseGeocodeCoordinate, type ReverseGeocodeResult } from '../services/geocodingService';
-import { fetchRealCadastralPolygon } from '../services/cadastralService';
+import { fetchRealCadastralPolygon, type SearchBounds } from '../services/cadastralService';
 import {
   Sparkles,
   MapPin,
   ArrowRight,
   Loader2,
   FileText,
+  ExternalLink,
+  Search,
 } from 'lucide-react';
 
 interface MapViewProps {
@@ -29,6 +31,9 @@ interface MapViewProps {
   selectedParcel: Parcel | null;
   onSelectParcel: (parcel: Parcel) => void;
   onOpenReport?: (parcel: Parcel) => void;
+  onBoundsChange?: (bounds: SearchBounds) => void;
+  onSearchInBounds?: (bounds: SearchBounds) => void;
+  isLiveSearching?: boolean;
 }
 
 const VWORLD_KEY = import.meta.env.VITE_VWORLD_API_KEY || 'E810A4B0-5AFE-4FF7-9E1F-2B905CFAD2B7';
@@ -61,7 +66,8 @@ const MapRecenter: React.FC<{
 const MapEventHandler: React.FC<{
   onRightClick: (lat: number, lng: number) => void;
   onZoomChange: (zoom: number) => void;
-}> = ({ onRightClick, onZoomChange }) => {
+  onBoundsChange?: (bounds: SearchBounds) => void;
+}> = ({ onRightClick, onZoomChange, onBoundsChange }) => {
   const map = useMapEvents({
     contextmenu(e) {
       e.originalEvent.preventDefault();
@@ -69,8 +75,26 @@ const MapEventHandler: React.FC<{
     },
     zoomend() {
       onZoomChange(map.getZoom());
+      if (onBoundsChange) {
+        const b = map.getBounds();
+        onBoundsChange({ south: b.getSouth(), west: b.getWest(), north: b.getNorth(), east: b.getEast() });
+      }
+    },
+    moveend() {
+      if (onBoundsChange) {
+        const b = map.getBounds();
+        onBoundsChange({ south: b.getSouth(), west: b.getWest(), north: b.getNorth(), east: b.getEast() });
+      }
     },
   });
+
+  useEffect(() => {
+    if (onBoundsChange) {
+      const b = map.getBounds();
+      onBoundsChange({ south: b.getSouth(), west: b.getWest(), north: b.getNorth(), east: b.getEast() });
+    }
+  }, [map, onBoundsChange]);
+
   return null;
 };
 
@@ -183,6 +207,9 @@ export const MapView: React.FC<MapViewProps> = ({
   selectedParcel,
   onSelectParcel,
   onOpenReport,
+  onBoundsChange,
+  onSearchInBounds,
+  isLiveSearching = false,
 }) => {
   // Map Type: 'base' (일반지도) | 'satellite' (위성지도) | 'topo' (지형지도)
   const [mapMode, setMapMode] = useState<'base' | 'satellite' | 'topo'>('base');
@@ -191,6 +218,15 @@ export const MapView: React.FC<MapViewProps> = ({
   const [showCadastral, setShowCadastral] = useState<boolean>(true); // 🌟 대표님 요청: 전국 연속지적도(지번 경계선) 레이어
   const [showGridLines, setShowGridLines] = useState<boolean>(true); // 🌟 대표님 요청: re100market 특화 한전 계통 연계선 및 변전소 시각화
   const [currentZoom, setCurrentZoom] = useState<number>(selectedParcel ? 18 : 18);
+
+  const currentBoundsRef = useRef<SearchBounds | null>(null);
+  const handleBoundsUpdate = React.useCallback(
+    (b: SearchBounds) => {
+      currentBoundsRef.current = b;
+      onBoundsChange?.(b);
+    },
+    [onBoundsChange]
+  );
 
   // 🌟 대표님 요청: 국토부 연속지적도 토글
   const handleToggleCadastral = () => {
@@ -592,6 +628,36 @@ export const MapView: React.FC<MapViewProps> = ({
 
   return (
     <main className="flex-1 h-full relative overflow-hidden bg-slate-950">
+      {/* 🌟 대표님 요청: 현재 지도 영역 실시간 국토부 실필지 발굴 플로팅 버튼 */}
+      {onSearchInBounds && (
+        <div
+          className="absolute top-4 left-1/2 -translate-x-1/2 z-[1000] pointer-events-auto select-none"
+          onWheel={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onDoubleClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            disabled={isLiveSearching}
+            onClick={() => currentBoundsRef.current && onSearchInBounds(currentBoundsRef.current)}
+            className="px-4 py-2 rounded-full bg-slate-900/95 hover:bg-slate-800 disabled:opacity-60 text-sky-300 border border-sky-500/50 shadow-2xl backdrop-blur-md text-xs font-bold flex items-center space-x-2 transition cursor-pointer active:scale-95"
+            title="현재 보고 있는 지도 화면 영역의 3만평+ 포함 실존 필지를 국토부 DB에서 실시간 조회합니다"
+          >
+            {isLiveSearching ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin text-sky-400" />
+                <span>국토부 실필지 실시간 검색 중...</span>
+              </>
+            ) : (
+              <>
+                <Search className="w-3.5 h-3.5 text-sky-400" />
+                <span>이 지도 영역에서 실필지 발굴</span>
+              </>
+            )}
+          </button>
+        </div>
+      )}
+
       {/* 🌟 대표님 요청 4: 휠 축소/확대 시에도 절대로 사라지지 않고 견고하게 고정되는 3단 지도 선택 컨트롤러 */}
       <div
         className="absolute top-4 right-4 z-[1000] flex flex-col items-end space-y-2 select-none pointer-events-auto"
@@ -802,6 +868,7 @@ export const MapView: React.FC<MapViewProps> = ({
         <MapEventHandler
           onRightClick={handleMapRightClick}
           onZoomChange={setCurrentZoom}
+          onBoundsChange={handleBoundsUpdate}
         />
 
         <ZoomSliderControl
@@ -1068,9 +1135,16 @@ export const MapView: React.FC<MapViewProps> = ({
                         </div>
 
                         {target.cadastralJibun && target.cadastralJibun !== target.address && (
-                          <div className="mb-2 text-[10px] text-sky-300 bg-sky-950/80 border border-sky-700/60 px-1.5 py-0.5 rounded flex items-center gap-1">
+                          <div className="mb-1 text-[10px] text-sky-300 bg-sky-950/80 border border-sky-700/60 px-1.5 py-0.5 rounded flex items-center gap-1">
                             <span className="shrink-0 font-semibold text-sky-400">[공부상 지번]</span>
                             <span className="truncate" title={target.cadastralJibun}>{target.cadastralJibun}</span>
+                          </div>
+                        )}
+
+                        {target.roadAddress && target.roadAddress !== target.address && (
+                          <div className="mb-2 text-[10px] text-amber-300/90 bg-amber-950/60 border border-amber-700/50 px-1.5 py-0.5 rounded flex items-center gap-1">
+                            <span className="shrink-0 font-medium text-amber-400">[도로명]</span>
+                            <span className="truncate" title={target.roadAddress}>{target.roadAddress}</span>
                           </div>
                         )}
 
@@ -1087,6 +1161,32 @@ export const MapView: React.FC<MapViewProps> = ({
                               {target.suitability} ({target.suitabilityScore}점)
                             </span>
                           </div>
+                        </div>
+
+                        {/* 외부 실지번 검증 링크 */}
+                        <div className="flex items-center gap-1 mt-2 pt-1.5 border-t border-slate-700/60">
+                          <a
+                            href={`https://map.naver.com/p/search/${encodeURIComponent(
+                              target.cadastralJibun ? target.cadastralJibun.split(' (')[0] : target.address
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 text-center py-1 text-[10px] font-semibold text-emerald-300 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 rounded flex items-center justify-center gap-0.5"
+                          >
+                            <span>네이버</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                          <a
+                            href={`https://www.disco.re/search?q=${encodeURIComponent(
+                              target.cadastralJibun ? target.cadastralJibun.split(' (')[0] : target.address
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex-1 text-center py-1 text-[10px] font-semibold text-sky-300 bg-sky-950/80 hover:bg-sky-900 border border-sky-700/60 rounded flex items-center justify-center gap-0.5"
+                          >
+                            <span>디스코</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
                         </div>
 
                         <button

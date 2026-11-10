@@ -14,6 +14,7 @@ import {
   Cable,
   CheckCircle2,
   BadgeAlert,
+  ExternalLink,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -135,6 +136,47 @@ export const DetailDrawer: React.FC<DetailDrawerProps> = ({
             <span className="mx-1.5 text-slate-600">|</span>
             <span className="text-slate-400">{parcel.zoning}</span>
           </p>
+
+          {/* 🌟 대표님 요청: 외부 공인 지도(네이버/디스코/카카오) 1초 검증 바로가기 링크 */}
+          <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-slate-800">
+            <span className="text-[10px] text-slate-500 font-medium mr-0.5">실지번 검증:</span>
+            <a
+              href={`https://map.naver.com/p/search/${encodeURIComponent(
+                parcel.cadastralJibun ? parcel.cadastralJibun.split(' (')[0] : parcel.address
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] font-semibold text-emerald-400 bg-emerald-950/80 hover:bg-emerald-900 border border-emerald-700/60 px-1.5 py-0.5 rounded flex items-center gap-0.5 transition"
+              title="네이버 지도에서 실존 지번 및 로드뷰 확인"
+            >
+              <span>네이버맵</span>
+              <ExternalLink className="w-2.5 h-2.5" />
+            </a>
+            <a
+              href={`https://www.disco.re/search?q=${encodeURIComponent(
+                parcel.cadastralJibun ? parcel.cadastralJibun.split(' (')[0] : parcel.address
+              )}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] font-semibold text-sky-400 bg-sky-950/80 hover:bg-sky-900 border border-sky-700/60 px-1.5 py-0.5 rounded flex items-center gap-0.5 transition"
+              title="디스코에서 실거래가 및 토지대장 열람"
+            >
+              <span>디스코</span>
+              <ExternalLink className="w-2.5 h-2.5" />
+            </a>
+            <a
+              href={`https://map.kakao.com/link/map/${encodeURIComponent(
+                parcel.cadastralJibun ? parcel.cadastralJibun.split(' (')[0] : parcel.address
+              )},${parcel.coordinates[0]},${parcel.coordinates[1]}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] font-semibold text-amber-400 bg-amber-950/80 hover:bg-amber-900 border border-amber-700/60 px-1.5 py-0.5 rounded flex items-center gap-0.5 transition"
+              title="카카오맵에서 연속지적도 및 위성사진 확인"
+            >
+              <span>카카오맵</span>
+              <ExternalLink className="w-2.5 h-2.5" />
+            </a>
+          </div>
         </div>
 
         {/* Action icons */}

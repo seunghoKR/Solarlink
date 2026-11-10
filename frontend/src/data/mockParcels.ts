@@ -1091,14 +1091,16 @@ function buildNationwideParcels(): Parcel[] {
         }
       }
 
-      // 면적: 120평 ~ 12,000평 고른 분포 (수천 건 평수 검색 지원)
+      // 면적: 150평 ~ 22,000평 고른 분포 (10,000 ~ 20,000평 대형 태양광 단지 완벽 지원)
       let areaPyeong: number;
-      if (r3 < 0.25) {
+      if (r3 < 0.20) {
         areaPyeong = Math.floor(150 + r4 * 850); // 150 ~ 1,000평 (소형)
-      } else if (r3 < 0.7) {
+      } else if (r3 < 0.60) {
         areaPyeong = Math.floor(1000 + r4 * 3500); // 1,000 ~ 4,500평 (중형 주력)
+      } else if (r3 < 0.82) {
+        areaPyeong = Math.floor(4500 + r4 * 5500); // 4,500 ~ 10,000평 (대형 MW급)
       } else {
-        areaPyeong = Math.floor(4500 + r4 * 6500); // 4,500 ~ 11,000평 (대형 MW급)
+        areaPyeong = Math.floor(10000 + r4 * 12000); // 10,000 ~ 22,000평 (초대형 단지급)
       }
       const areaSqm = Math.round(areaPyeong * 3.305785);
 
@@ -1112,10 +1114,20 @@ function buildNationwideParcels(): Parcel[] {
       const lat = parseFloat((baseLat + latOffset).toFixed(5));
       const lng = parseFloat((baseLng + lngOffset).toFixed(5));
 
-      const bunji1 = Math.floor(10 + pseudoRandom(seed + 9) * 980);
+      const isMountain = landCategory === '임야';
+      const bunji1 = isMountain
+        ? Math.floor(10 + pseudoRandom(seed + 9) * 220)
+        : Math.floor(10 + pseudoRandom(seed + 9) * 980);
       const bunji2 = pseudoRandom(seed + 10) > 0.4 ? Math.floor(1 + pseudoRandom(seed + 11) * 35) : 0;
-      const bunjiStr = bunji2 > 0 ? `${bunji1}-${bunji2}` : `${bunji1}`;
+      const sanPrefix = isMountain ? '산' : '';
+      const bunjiStr = bunji2 > 0 ? `${sanPrefix}${bunji1}-${bunji2}` : `${sanPrefix}${bunji1}`;
       const address = `${reg.sido} ${sigunguObj.name} ${bjdongName}${riPrefix} ${bunjiStr}`;
+
+      // 🌟 신주소(도로명) 체계 호환: 해당 읍/면/리 기반 대표 도로명 생성
+      const roadNameBase = bjdongName.replace(/[면읍동]$/, '');
+      const roadSuffix = pseudoRandom(seed + 26) > 0.5 ? '로' : '길';
+      const roadNumber = Math.floor(1 + pseudoRandom(seed + 9) * 450);
+      const roadAddress = `${reg.sido} ${sigunguObj.name} ${roadNameBase}${roadSuffix} ${roadNumber}`;
 
       const pnu = `${reg.code}${Math.floor(1000000000000000 + pseudoRandom(seed + 12) * 8999999999999999)}`;
 
@@ -1247,6 +1259,7 @@ function buildNationwideParcels(): Parcel[] {
           id: `np_${globalIndex}`,
           pnu,
           address,
+          roadAddress,
           sido: reg.sido,
           sigungu: sigunguObj.name,
           bjdong: bjdongName,

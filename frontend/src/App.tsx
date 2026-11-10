@@ -1,9 +1,16 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useCallback } from 'react';
 import { MOCK_PARCELS, REGION_SUMMARIES } from './data/mockParcels';
 import type { Parcel, LandCategory, Zoning } from './types/solar';
 import type { User } from './types/auth';
 import { searchAddressCoordinate } from './services/geocodingService';
-import { fetchRealCadastralByAddress, fetchRealCadastralPolygon, normalizeJimok, fetchRealZoning } from './services/cadastralService';
+import {
+  fetchRealCadastralByAddress,
+  fetchRealCadastralPolygon,
+  normalizeJimok,
+  fetchRealZoning,
+  searchParcelsInBounds,
+  type SearchBounds,
+} from './services/cadastralService';
 import {
   addRecentSearch,
   recordAuditLog,
@@ -66,6 +73,11 @@ export const App: React.FC = () => {
   const [showBookmarksOnly, setShowBookmarksOnly] = useState(false);
   const [searchToast, setSearchToast] = useState<{ message: string; type: 'info' | 'success' } | null>(null);
 
+  // 🌟 국토부 VWorld 지도 영역 실시간 발굴 부지 목록 및 맵 바운드 상태
+  const [discoveredParcels, setDiscoveredParcels] = useState<Parcel[]>([]);
+  const currentMapBounds = useRef<SearchBounds | null>(null);
+  const [isLiveSearching, setIsLiveSearching] = useState(false);
+
   const handleLoginSuccess = (user: User) => {
     setCurrentUser(user);
     recordAuditLog(user, 'LOGIN', `${user.name} (${user.roleLabel}) 시스템 로그인 성공`);
@@ -116,7 +128,7 @@ export const App: React.FC = () => {
   // 🌟 대표님 요청 2: 활성화된 필터 조건 상태 (검색 버튼 클릭 시에만 갱신)
   const [activeCriteria, setActiveCriteria] = useState<FilterCriteria>({
     minPyeong: 100,
-    maxPyeong: 10000,
+    maxPyeong: 0,
     selectedCategories: ['잡종지', '임야', '전', '답', '염전', '대지', '과수원', '목장용지'],
     selectedZoning: '전체',
     minGridCapacity: 0,
@@ -129,7 +141,7 @@ export const App: React.FC = () => {
     recordAuditLog(
       currentUser,
       'FILTER_SEARCH',
-      `부지 조건 검색: ${criteria.minPyeong}평~${criteria.maxPyeong}평, 지목: ${criteria.selectedCategories.join(
+      `부지 조건 검색: ${criteria.minPyeong}평~${criteria.maxPyeong > 0 ? `${criteria.maxPyeong}평` : '제한없음'}, 지목: ${criteria.selectedCategories.join(
         ','
       )}, 용도: ${criteria.selectedZoning}, 여유: ${criteria.minGridCapacity}MW`
     );
@@ -138,7 +150,7 @@ export const App: React.FC = () => {
   const handleResetFilters = () => {
     setActiveCriteria({
       minPyeong: 100,
-      maxPyeong: 10000,
+      maxPyeong: 0,
       selectedCategories: ['잡종지', '임야', '전', '답', '염전', '대지', '과수원', '목장용지'],
       selectedZoning: '전체',
       minGridCapacity: 0,
@@ -466,12 +478,15 @@ export const App: React.FC = () => {
           const realZoning = (realCadastral.zoning || (await fetchRealZoning(parcel.coordinates[0], parcel.coordinates[1]))) as Zoning;
           const realJimok = (realCadastral.normalizedJimok || normalizeJimok(realCadastral.jimok) || parcel.landCategory) as LandCategory;
 
+          const areaNote = realCadastral.pareaPyeong > 0 ? ` (공부상 실측 ${realCadastral.pareaPyeong.toLocaleString()}평)` : '';
+          const displayCadastralJibun = jibunAddr ? `${jibunAddr}${areaNote}` : undefined;
+
           // 🌟 목록에서 선택한 주소명(parcel.address)을 100% 일관되게 유지하여 직관성 및 신뢰성 확보!
           const updatedParcel: Parcel = {
             ...parcel,
             pnu: realCadastral.pnu,
             address: parcel.address, // 목록과 100% 동일하게 유지!
-            cadastralJibun: jibunAddr || undefined, // 실제 국토부 지적공부상 실필지 정보
+            cadastralJibun: displayCadastralJibun, // 실제 국토부 지적공부상 실필지 정보 및 실측 면적
             roadAddress: realCadastral.roadAddress || parcel.roadAddress,
             sido: realCadastral.sido || parcel.sido,
             sigungu: realCadastral.sigungu || parcel.sigungu,
@@ -495,10 +510,98 @@ export const App: React.FC = () => {
     setIsReportOpen(true);
   };
 
-  // Filtered Parcels Pool (전국 3,920건 + 사용자 검색 필지)
+  // 🌟 대표님 요청: 현재 보고 있는 지도 영역(Bounding Box) 내 국토부 VWorld 실필지 조건 검색
+  const handleSearchInMapBounds = useCallback(
+    async (customBounds?: SearchBounds, customCriteria?: FilterCriteria) => {
+      const targetBounds = customBounds || currentMapBounds.current;
+      if (!targetBounds) {
+        setSearchToast({
+          message: '지도가 준비 중입니다. 잠시 후 다시 눌러주세요.',
+          type: 'info',
+        });
+        return;
+      }
+
+      const criteria = customCriteria || activeCriteria;
+      if (customCriteria) {
+        setShowBookmarksOnly(false);
+        setActiveCriteria(customCriteria);
+      }
+
+      setIsLiveSearching(true);
+      try {
+        const result = await searchParcelsInBounds({
+          bounds: targetBounds,
+          minPyeong: criteria.minPyeong,
+          maxPyeong: criteria.maxPyeong,
+          selectedCategories: criteria.selectedCategories,
+        });
+
+        if (result.status === 'TOO_WIDE') {
+          setSearchToast({
+            message: '💡 시·군 또는 읍·면 단위(줌 12 이상)로 지도를 조금 더 확대한 뒤 눌러주세요!',
+            type: 'info',
+          });
+          return;
+        }
+
+        if (result.status === 'ERROR') {
+          setSearchToast({
+            message: '국토부 VWorld API 응답이 지연되고 있습니다. 잠시 후 다시 시도해 주세요.',
+            type: 'info',
+          });
+          return;
+        }
+
+        if (result.parcels.length === 0) {
+          setSearchToast({
+            message: '현재 지도 영역에 설정 조건을 만족하는 실존 필지가 없습니다. 지도를 옮기거나 조건을 넓혀보세요.',
+            type: 'info',
+          });
+          return;
+        }
+
+        // 새 필지 풀에 병합 (PNU 기준 중복 방지)
+        const existingPnuSet = new Set(MOCK_PARCELS.map((p) => p.pnu));
+        const newParcels = result.parcels.filter((p) => !existingPnuSet.has(p.pnu));
+
+        if (newParcels.length > 0) {
+          setDiscoveredParcels((prev) => {
+            const map = new Map<string, Parcel>();
+            for (const p of newParcels) map.set(p.pnu, p);
+            for (const p of prev) if (!map.has(p.pnu)) map.set(p.pnu, p);
+            return Array.from(map.values());
+          });
+        }
+
+        const topParcel = result.parcels[0];
+        if (topParcel) {
+          setSelectedParcel(topParcel);
+          saveLastViewedParcel(currentUser?.id || 'guest', topParcel);
+        }
+
+        recordAuditLog(
+          currentUser,
+          'FILTER_SEARCH',
+          `지도 영역 실시간 발굴: ${result.parcels.length}건 (최대 ${topParcel?.areaPyeong.toLocaleString() || 0}평)`
+        );
+
+        setSearchToast({
+          message: `📡 현재 지도 영역에서 실존 필지 ${result.parcels.length}건(최대 ${topParcel.areaPyeong.toLocaleString()}평)을 국토부 DB에서 실시간 발굴했습니다!`,
+          type: 'success',
+        });
+      } finally {
+        setIsLiveSearching(false);
+      }
+    },
+    [activeCriteria, currentUser]
+  );
+
+  // Filtered Parcels Pool (전국 3,920건 + 실시간 발굴 필지 + 사용자 검색 필지)
   const allParcelsPool = useMemo(() => {
-    return customSearchedParcel ? [customSearchedParcel, ...MOCK_PARCELS] : MOCK_PARCELS;
-  }, [customSearchedParcel]);
+    const base = discoveredParcels.length > 0 ? [...discoveredParcels, ...MOCK_PARCELS] : MOCK_PARCELS;
+    return customSearchedParcel ? [customSearchedParcel, ...base] : base;
+  }, [customSearchedParcel, discoveredParcels]);
 
   // 🌟 대표님 요청 2: 활성화된 필터 조건에 따른 수천 건 필터링 엔진
   const filteredParcels = useMemo(() => {
@@ -600,6 +703,8 @@ export const App: React.FC = () => {
           onResetFilters={handleResetFilters}
           showBookmarksOnly={showBookmarksOnly}
           onDisableBookmarksOnly={() => setShowBookmarksOnly(false)}
+          onSearchCurrentMap={(criteria) => handleSearchInMapBounds(undefined, criteria)}
+          isLiveSearching={isLiveSearching}
         />
 
         {/* Center Interactive GIS Map Canvas */}
@@ -609,6 +714,11 @@ export const App: React.FC = () => {
           selectedParcel={selectedParcel}
           onSelectParcel={handleSelectParcel}
           onOpenReport={handleOpenReportForParcel}
+          onBoundsChange={(b) => {
+            currentMapBounds.current = b;
+          }}
+          onSearchInBounds={(b) => handleSearchInMapBounds(b)}
+          isLiveSearching={isLiveSearching}
         />
 
         {/* Right Deep-Analysis Drawer (Slide-over) */}
