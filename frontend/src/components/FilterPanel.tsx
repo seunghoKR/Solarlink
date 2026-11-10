@@ -176,7 +176,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
       )}
 
       {/* 2. Scrollable Condition Controls Form */}
-      <form onSubmit={handleExecuteSearch} className="flex flex-col flex-1 overflow-hidden">
+      <form onSubmit={handleExecuteSearch} noValidate className="flex flex-col flex-1 overflow-hidden">
         <div className="p-3.5 space-y-3.5 border-b border-slate-800 overflow-y-auto max-h-[50%] text-sm">
           {/* A. 희망 평수 필터 */}
           <div>
@@ -190,7 +190,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
               <input
                 type="number"
                 min={0}
-                step={50}
+                step="any"
                 value={draftMinPyeong}
                 onChange={(e) => setDraftMinPyeong(Math.max(0, Number(e.target.value) || 0))}
                 className="w-1/2 bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-slate-100 text-right text-xs focus:outline-none focus:border-amber-500 font-mono"
@@ -200,7 +200,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
               <input
                 type="number"
                 min={0}
-                step={500}
+                step="any"
                 value={draftMaxPyeong === 0 ? '' : draftMaxPyeong}
                 onChange={(e) => setDraftMaxPyeong(Math.max(0, Number(e.target.value) || 0))}
                 className="w-1/2 bg-slate-800 border border-slate-700 rounded px-2.5 py-1.5 text-slate-100 text-right text-xs focus:outline-none focus:border-amber-500 font-mono placeholder-slate-500"

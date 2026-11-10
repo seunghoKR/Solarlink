@@ -6,16 +6,21 @@ import type {
   SuitabilityStatus,
   DistributionLine,
 } from '../types/solar';
+import { REAL_VWORLD_PARCELS_RAW } from './realVWorldParcels';
 
 export const REGION_SUMMARIES: RegionSummary[] = [
-  { sido: '전라남도', candidateCount: 842, center: [34.816, 126.65], gridCapacityAvg: 4.8 },
-  { sido: '전북특별자치도', candidateCount: 620, center: [35.717, 127.153], gridCapacityAvg: 3.2 },
-  { sido: '충청남도', candidateCount: 512, center: [36.518, 126.8], gridCapacityAvg: 2.7 },
-  { sido: '경상북도', candidateCount: 730, center: [36.491, 128.888], gridCapacityAvg: 3.5 },
-  { sido: '강원특별자치도', candidateCount: 310, center: [37.822, 128.155], gridCapacityAvg: 1.9 },
-  { sido: '경상남도', candidateCount: 425, center: [35.46, 128.21], gridCapacityAvg: 2.4 },
-  { sido: '충청북도', candidateCount: 280, center: [36.8, 127.7], gridCapacityAvg: 2.1 },
-  { sido: '경기도', candidateCount: 195, center: [37.413, 127.518], gridCapacityAvg: 1.2 },
+  { sido: '전라남도', candidateCount: 1106, center: [34.816, 126.65], gridCapacityAvg: 4.8 },
+  { sido: '전북특별자치도', candidateCount: 824, center: [35.717, 127.153], gridCapacityAvg: 3.2 },
+  { sido: '충청남도', candidateCount: 741, center: [36.518, 126.8], gridCapacityAvg: 2.7 },
+  { sido: '경상북도', candidateCount: 918, center: [36.491, 128.888], gridCapacityAvg: 3.5 },
+  { sido: '경상남도', candidateCount: 613, center: [35.46, 128.21], gridCapacityAvg: 2.4 },
+  { sido: '충청북도', candidateCount: 515, center: [36.8, 127.7], gridCapacityAvg: 2.1 },
+  { sido: '강원특별자치도', candidateCount: 498, center: [37.822, 128.155], gridCapacityAvg: 1.9 },
+  { sido: '경기도', candidateCount: 326, center: [37.413, 127.518], gridCapacityAvg: 1.2 },
+  { sido: '제주특별자치도', candidateCount: 220, center: [33.385, 126.54], gridCapacityAvg: 5.1 },
+  { sido: '세종특별자치시', candidateCount: 110, center: [36.55, 127.26], gridCapacityAvg: 2.3 },
+  { sido: '인천광역시', candidateCount: 130, center: [37.66, 126.46], gridCapacityAvg: 1.8 },
+  { sido: '대구광역시', candidateCount: 110, center: [36.18, 128.61], gridCapacityAvg: 2.5 },
 ];
 
 // 대표 6대 기준 필지
@@ -1033,6 +1038,102 @@ const REGION_DATA: { sido: string; code: string; count: number; sigungus: Sigung
       },
     ],
   },
+  {
+    sido: '제주특별자치도',
+    code: '50',
+    count: 220,
+    sigungus: [
+      {
+        name: '제주시',
+        bjdongs: [
+          { name: '구좌읍', ri: '행원리', lat: 33.5512, lng: 126.8123 },
+          { name: '구좌읍', ri: '동복리', lat: 33.5412, lng: 126.7321 },
+          { name: '한경면', ri: '용수리', lat: 33.3251, lng: 126.1685 },
+          { name: '한경면', ri: '고산리', lat: 33.3012, lng: 126.1752 },
+          { name: '한림읍', ri: '금악리', lat: 33.3542, lng: 126.2842 },
+          { name: '조천읍', ri: '대흘리', lat: 33.5123, lng: 126.6852 },
+        ],
+        lat: 33.499,
+        lng: 126.531,
+      },
+      {
+        name: '서귀포시',
+        bjdongs: [
+          { name: '대정읍', ri: '신도리', lat: 33.2685, lng: 126.1952 },
+          { name: '안덕면', ri: '서광리', lat: 33.3052, lng: 126.3354 },
+          { name: '남원읍', ri: '신흥리', lat: 33.2985, lng: 126.7452 },
+          { name: '성산읍', ri: '신풍리', lat: 33.3652, lng: 126.8654 },
+          { name: '표선면', ri: '가시리', lat: 33.3852, lng: 126.7352 },
+        ],
+        lat: 33.254,
+        lng: 126.56,
+      },
+    ],
+  },
+  {
+    sido: '세종특별자치시',
+    code: '36',
+    count: 110,
+    sigungus: [
+      {
+        name: '세종시',
+        bjdongs: [
+          { name: '조치원읍', ri: '번암리', lat: 36.5952, lng: 127.2954 },
+          { name: '연서면', ri: '봉암리', lat: 36.5652, lng: 127.2652 },
+          { name: '전의면', ri: '유천리', lat: 36.6752, lng: 127.2152 },
+          { name: '장군면', ri: '도계리', lat: 36.5052, lng: 127.2052 },
+          { name: '금남면', ri: '용포리', lat: 36.4652, lng: 127.2852 },
+        ],
+        lat: 36.48,
+        lng: 127.289,
+      },
+    ],
+  },
+  {
+    sido: '인천광역시',
+    code: '28',
+    count: 130,
+    sigungus: [
+      {
+        name: '강화군',
+        bjdongs: [
+          { name: '화도면', ri: '사기리', lat: 37.6152, lng: 126.4352 },
+          { name: '길상면', ri: '온수리', lat: 37.6452, lng: 126.4952 },
+          { name: '삼산면', ri: '매음리', lat: 37.6852, lng: 126.3152 },
+          { name: '내가면', ri: '고천리', lat: 37.7152, lng: 126.4052 },
+        ],
+        lat: 37.746,
+        lng: 126.487,
+      },
+      {
+        name: '옹진군',
+        bjdongs: [
+          { name: '영흥면', ri: '외리', lat: 37.2452, lng: 126.4852 },
+          { name: '영흥면', ri: '내리', lat: 37.2652, lng: 126.5152 },
+        ],
+        lat: 37.25,
+        lng: 126.5,
+      },
+    ],
+  },
+  {
+    sido: '대구광역시',
+    code: '27',
+    count: 110,
+    sigungus: [
+      {
+        name: '군위군',
+        bjdongs: [
+          { name: '효령면', ri: '노행리', lat: 36.1852, lng: 128.5852 },
+          { name: '소보면', ri: '송원리', lat: 36.2652, lng: 128.5152 },
+          { name: '의흥면', ri: '읍내리', lat: 36.1552, lng: 128.6952 },
+          { name: '부계면', ri: '대율리', lat: 36.0852, lng: 128.6752 },
+        ],
+        lat: 36.242,
+        lng: 128.572,
+      },
+    ],
+  },
 ];
 
 const CATEGORY_POOL: LandCategory[] = ['잡종지', '임야', '전', '답', '과수원', '목장용지', '염전'];
@@ -1050,11 +1151,212 @@ function pseudoRandom(seed: number): number {
   return x - Math.floor(x);
 }
 
-// 3,914건 전국 부지 자동 생성
-function buildNationwideParcels(): Parcel[] {
-  const generated: Parcel[] = [...SEED_PARCELS];
-  let globalIndex = 7;
+function stringHash(str: string): number {
+  let hash = 2166136261;
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return Math.abs(hash);
+}
 
+function synthesizeRealParcel(raw: typeof REAL_VWORLD_PARCELS_RAW[0], idx: number): Parcel {
+  const seed = stringHash(raw.pnu || raw.address) + idx * 17;
+  const [lat, lng] = raw.coordinates;
+  const areaSqm = raw.areaSqm;
+  const areaPyeong = raw.areaPyeong;
+  const cat = (raw.landCategory || '전') as LandCategory;
+  const zoning = ZONING_POOL[Math.floor(pseudoRandom(seed + 1) * ZONING_POOL.length)];
+
+  const availableCapacityMw = parseFloat((0.3 + pseudoRandom(seed + 2) * 6.9).toFixed(1));
+  const gridStatus: '여유' | '보통' | '포화' =
+    availableCapacityMw >= 2.0 ? '여유' : availableCapacityMw >= 0.8 ? '보통' : '포화';
+
+  const isForest = cat === '임야';
+  const slopeDegree = parseFloat(
+    ((isForest ? 4.5 : 1.2) + pseudoRandom(seed + 3) * (isForest ? 14 : 8.5)).toFixed(1)
+  );
+  const residentialDist = Math.floor(140 + pseudoRandom(seed + 4) * 580);
+  const roadDist = Math.floor(70 + pseudoRandom(seed + 5) * 320);
+
+  const passResidential = residentialDist >= 200;
+  const passRoad = roadDist >= 100;
+  const passSlope = slopeDegree <= 15;
+
+  let suitability: SuitabilityStatus;
+  let suitabilityScore: number;
+  if (passResidential && passRoad && passSlope && availableCapacityMw >= 1.0) {
+    suitability = '예비적합';
+    suitabilityScore = Math.floor(88 + pseudoRandom(seed + 6) * 11);
+  } else if (!passSlope || residentialDist < 150) {
+    suitability = '제한';
+    suitabilityScore = Math.floor(35 + pseudoRandom(seed + 6) * 25);
+  } else {
+    suitability = '조건부';
+    suitabilityScore = Math.floor(65 + pseudoRandom(seed + 6) * 22);
+  }
+
+  const effectiveAreaSqm = Math.round(areaSqm * 0.82);
+  const estimatedCapacityKwp = Math.max(10, Math.round(effectiveAreaSqm / 14));
+  const annualGenerationKwh = Math.round(estimatedCapacityKwp * 3.75 * 365);
+  const capexTotalWon = Math.round(estimatedCapacityKwp * 1250000);
+  const annualRevenueWon = Math.round(annualGenerationKwh * 170);
+  const annualOpexWon = Math.round(capexTotalWon * 0.018);
+  const irrPercent = parseFloat((6.8 + pseudoRandom(seed + 7) * 4.2).toFixed(1));
+  const npvWon = Math.round(capexTotalWon * 0.45);
+  const paybackYears = parseFloat((5.2 + pseudoRandom(seed + 8) * 2.6).toFixed(1));
+  const substationDist = parseFloat((1.8 + pseudoRandom(seed + 9) * 6.2).toFixed(1));
+  const dl1Dist = parseFloat((0.7 + pseudoRandom(seed + 10) * 1.5).toFixed(1));
+  const dl2Dist = parseFloat((dl1Dist + 1.1 + pseudoRandom(seed + 11) * 1.5).toFixed(1));
+  const dl3Dist = parseFloat((dl2Dist + 1.4 + pseudoRandom(seed + 12) * 1.8).toFixed(1));
+
+  const dl2Mw = parseFloat(Math.max(0.3, availableCapacityMw * 0.65).toFixed(1));
+  const dl3Mw = parseFloat(Math.max(0.1, availableCapacityMw * 0.25).toFixed(1));
+  const dl2Status: '여유' | '보통' | '포화' = dl2Mw >= 2.0 ? '여유' : dl2Mw >= 0.8 ? '보통' : '포화';
+  const dl3Status: '여유' | '보통' | '포화' = dl3Mw >= 2.0 ? '여유' : dl3Mw >= 0.8 ? '보통' : '포화';
+
+  const dlBaseName = raw.bjdong || raw.emd || raw.sigungu;
+  const distributionLines: DistributionLine[] = [
+    {
+      name: `${dlBaseName}DL #${(idx % 3) + 1}`,
+      availableMw: availableCapacityMw,
+      status: gridStatus,
+      distanceKm: dl1Dist,
+      estimatedInterconnectionCostWon: Math.round(dl1Dist * 45000000),
+      isRecommended: true,
+    },
+    {
+      name: `${raw.sigungu}DL #${((idx + 1) % 4) + 1}`,
+      availableMw: dl2Mw,
+      status: dl2Status,
+      distanceKm: dl2Dist,
+      estimatedInterconnectionCostWon: Math.round(dl2Dist * 45000000),
+    },
+    {
+      name: `연계선로DL #${((idx + 2) % 5) + 1}`,
+      availableMw: dl3Mw,
+      status: dl3Status,
+      distanceKm: dl3Dist,
+      estimatedInterconnectionCostWon: Math.round(dl3Dist * 45000000),
+    },
+  ];
+
+  let baseTradePrice = 70000;
+  if (cat === '잡종지') baseTradePrice = 95000;
+  else if (cat === '임야') baseTradePrice = 35000;
+  else if (cat === '전') baseTradePrice = 75000;
+  else if (cat === '답') baseTradePrice = 65000;
+  else if (cat === '염전') baseTradePrice = 48000;
+  else if (cat === '대지') baseTradePrice = 135000;
+
+  const avgTradingPricePerPyeong = Math.round(baseTradePrice * (0.85 + pseudoRandom(seed + 13) * 0.35));
+  const estimatedLandPriceTotalWon = Math.round(areaPyeong * avgTradingPricePerPyeong);
+  const roadRand = pseudoRandom(seed + 14);
+  const roadAccess =
+    roadRand > 0.4
+      ? '폭 4m 포장 농로 접면 (개발행위 진입로 확보)'
+      : roadRand > 0.12
+      ? '2차선 아스팔트 포장도로 접면 (진입 양호)'
+      : '맹지 (인접 사유지 진입로 개설 협의 필요)';
+
+  const ownRand = pseudoRandom(seed + 15);
+  const ownershipType =
+    ownRand > 0.3 ? '개인' : ownRand > 0.1 ? '법인' : ownRand > 0.04 ? '국유지/공유지' : '종중';
+
+  return {
+    id: `rv_${raw.pnu}`,
+    pnu: raw.pnu,
+    address: raw.address,
+    cadastralJibun: raw.jibunRaw || undefined,
+    sido: raw.sido,
+    sigungu: raw.sigungu,
+    bjdong: raw.bjdong || raw.emd || '',
+    landCategory: cat,
+    areaPyeong,
+    areaSqm,
+    zoning,
+    officialPrice: Math.floor(15000 + pseudoRandom(seed + 16) * 45000),
+    coordinates: [lat, lng],
+    polygon: raw.polygon,
+    slopeDegree,
+    aspect: pseudoRandom(seed + 17) > 0.5 ? '정남향 (180°)' : '남동향 (150°)',
+    suitability,
+    suitabilityScore,
+    regulationChecks: {
+      residentialDistance: {
+        distance: residentialDist,
+        required: 200,
+        pass: passResidential,
+        ordinance: `${raw.sigungu} 도시계획조례 제20조`,
+      },
+      roadDistance: {
+        distance: roadDist,
+        required: 100,
+        pass: passRoad,
+        ordinance: '군도 및 지방도 이격기준 완충구역',
+      },
+      protectionZone: { intersected: false, zoneName: '해당없음', areaRatio: 0 },
+      slopeCheck: { degree: slopeDegree, limit: 15, pass: passSlope },
+    },
+    grid: {
+      substationName: `${raw.sigungu}변전소`,
+      substationDistanceKm: substationDist,
+      substationCoordinates: [
+        parseFloat((lat + (pseudoRandom(seed + 18) - 0.5) * 0.05).toFixed(5)),
+        parseFloat((lng + (pseudoRandom(seed + 19) - 0.5) * 0.06).toFixed(5)),
+      ],
+      substationCapacityTotalMw: parseFloat((availableCapacityMw * 3.5 + 4.2).toFixed(1)),
+      mtrNumber: `#${(idx % 3) + 1} M.Tr`,
+      mtrAvailableMw: parseFloat((availableCapacityMw * 1.3).toFixed(1)),
+      dlName: `${dlBaseName}DL #${(idx % 3) + 1}`,
+      availableCapacityMw,
+      status: gridStatus,
+      updatedAt: '2026-11-10',
+      distributionLines,
+    },
+    realEstate: {
+      avgTradingPricePerPyeong,
+      estimatedLandPriceTotalWon,
+      roadAccess,
+      isLandlocked: roadAccess.includes('맹지'),
+      ownershipType,
+      recentTradesCount: Math.floor(3 + pseudoRandom(seed + 20) * 11),
+    },
+    solar: {
+      ghiAnnualAvg: 3.75,
+      effectiveAreaSqm,
+      estimatedCapacityKwp,
+      annualGenerationKwh,
+    },
+    financials: {
+      capexTotalWon,
+      annualRevenueWon,
+      annualOpexWon,
+      irrPercent,
+      npvWon,
+      paybackYears,
+    },
+  };
+}
+
+// 6,000건+ 전국 12개 광역시도 전역 실필지 & 후보지 통합 생성 엔진
+function buildNationwideParcels(): Parcel[] {
+  const parcelMap = new Map<string, Parcel>();
+
+  // 1. 기준 시드 필지 6건 등록
+  for (const p of SEED_PARCELS) {
+    parcelMap.set(p.pnu, p);
+  }
+
+  // 2. 국토교통부 브이월드 공인 실존 1,674필지 실데이터셋 병합 (최우선 배치)
+  REAL_VWORLD_PARCELS_RAW.forEach((raw, idx) => {
+    if (!parcelMap.has(raw.pnu)) {
+      parcelMap.set(raw.pnu, synthesizeRealParcel(raw, idx));
+    }
+  });
+
+  // 3. 전국 12개 광역시도 권역별 촘촘한 후보지 생성
+  let globalIndex = 2000;
   for (const reg of REGION_DATA) {
     const targetCount = reg.count;
     for (let i = 0; i < targetCount; i++) {
@@ -1083,7 +1385,6 @@ function buildNationwideParcels(): Parcel[] {
         bjdongName = rawBjdong;
         baseLat = sigunguObj.lat;
         baseLng = sigunguObj.lng;
-        // 🌟 대한민국 법정 지번 규칙: 면(面) 및 읍(邑) 아래에는 반드시 '리(里)'가 존재해야 합법적 지번 성립!
         if (bjdongName.endsWith('면') || bjdongName.endsWith('읍')) {
           const sampleRis = ['원평리', '대기리', '용산리', '송학리', '동관리', '부동리', '백석리', '신흥리', '금계리', '평촌리'];
           const pickedRi = sampleRis[Math.floor(pseudoRandom(seed + 6) * sampleRis.length)];
@@ -1255,7 +1556,7 @@ function buildNationwideParcels(): Parcel[] {
             ? '국유지/공유지'
             : '종중';
 
-        generated.push({
+        parcelMap.set(pnu, {
           id: `np_${globalIndex}`,
           pnu,
           address,
@@ -1334,7 +1635,7 @@ function buildNationwideParcels(): Parcel[] {
     }
   }
 
-  return generated;
+  return Array.from(parcelMap.values()).sort((a, b) => b.suitabilityScore - a.suitabilityScore);
 }
 
 export const MOCK_PARCELS: Parcel[] = buildNationwideParcels();
