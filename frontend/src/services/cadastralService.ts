@@ -650,7 +650,14 @@ function synthesizeDiscoveredParcel(
     coordinates: [lat, lng],
     polygon: raw.polygon,
     slopeDegree: slope,
-    aspect: pseudoRandom(seed + 17) > 0.5 ? '정남향 (180°)' : '남동향 (150°)',
+    aspect: (() => {
+      const r = pseudoRandom(seed + 17);
+      if (r > 0.45) return '정남향 (180°)';
+      if (r > 0.25) return '남동향 (150°)';
+      if (r > 0.12) return '남서향 (210°)';
+      if (r > 0.06) return '북동향 (45°)';
+      return '북서향 (315°)';
+    })(),
     suitability,
     suitabilityScore: score,
     regulationChecks: {

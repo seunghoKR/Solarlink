@@ -9,18 +9,23 @@ import type {
 import { REAL_VWORLD_PARCELS_RAW } from './realVWorldParcels';
 
 export const REGION_SUMMARIES: RegionSummary[] = [
-  { sido: '전라남도', candidateCount: 1106, center: [34.816, 126.65], gridCapacityAvg: 4.8 },
-  { sido: '전북특별자치도', candidateCount: 824, center: [35.717, 127.153], gridCapacityAvg: 3.2 },
-  { sido: '충청남도', candidateCount: 741, center: [36.518, 126.8], gridCapacityAvg: 2.7 },
-  { sido: '경상북도', candidateCount: 918, center: [36.491, 128.888], gridCapacityAvg: 3.5 },
+  { sido: '전라남도', candidateCount: 1108, center: [34.816, 126.65], gridCapacityAvg: 4.8 },
+  { sido: '전북특별자치도', candidateCount: 825, center: [35.717, 127.153], gridCapacityAvg: 3.2 },
+  { sido: '충청남도', candidateCount: 742, center: [36.518, 126.8], gridCapacityAvg: 2.7 },
+  { sido: '경상북도', candidateCount: 920, center: [36.491, 128.888], gridCapacityAvg: 3.5 },
   { sido: '경상남도', candidateCount: 613, center: [35.46, 128.21], gridCapacityAvg: 2.4 },
   { sido: '충청북도', candidateCount: 515, center: [36.8, 127.7], gridCapacityAvg: 2.1 },
   { sido: '강원특별자치도', candidateCount: 498, center: [37.822, 128.155], gridCapacityAvg: 1.9 },
   { sido: '경기도', candidateCount: 326, center: [37.413, 127.518], gridCapacityAvg: 1.2 },
+  { sido: '부산광역시', candidateCount: 160, center: [35.18, 129.07], gridCapacityAvg: 2.8 },
+  { sido: '울산광역시', candidateCount: 180, center: [35.54, 129.31], gridCapacityAvg: 3.9 },
+  { sido: '대구광역시', candidateCount: 157, center: [36.18, 128.61], gridCapacityAvg: 2.5 },
+  { sido: '광주광역시', candidateCount: 140, center: [35.16, 126.85], gridCapacityAvg: 3.4 },
+  { sido: '대전광역시', candidateCount: 120, center: [36.35, 127.38], gridCapacityAvg: 2.6 },
+  { sido: '인천광역시', candidateCount: 130, center: [37.66, 126.46], gridCapacityAvg: 1.8 },
   { sido: '제주특별자치도', candidateCount: 220, center: [33.385, 126.54], gridCapacityAvg: 5.1 },
   { sido: '세종특별자치시', candidateCount: 110, center: [36.55, 127.26], gridCapacityAvg: 2.3 },
-  { sido: '인천광역시', candidateCount: 130, center: [37.66, 126.46], gridCapacityAvg: 1.8 },
-  { sido: '대구광역시', candidateCount: 110, center: [36.18, 128.61], gridCapacityAvg: 2.5 },
+  { sido: '서울특별시', candidateCount: 80, center: [37.5665, 126.978], gridCapacityAvg: 1.5 },
 ];
 
 // 대표 6대 기준 필지
@@ -1132,11 +1137,158 @@ const REGION_DATA: { sido: string; code: string; count: number; sigungus: Sigung
         lat: 36.242,
         lng: 128.572,
       },
+      {
+        name: '달성군',
+        bjdongs: [
+          { name: '구지면', ri: '응암리', lat: 35.6552, lng: 128.4352 },
+          { name: '현풍읍', ri: '상리', lat: 35.7052, lng: 128.4552 },
+          { name: '유가읍', ri: '봉리', lat: 35.6852, lng: 128.4852 },
+        ],
+        lat: 35.68,
+        lng: 128.46,
+      },
+    ],
+  },
+  {
+    sido: '부산광역시',
+    code: '26',
+    count: 160,
+    sigungus: [
+      {
+        name: '강서구',
+        bjdongs: [
+          { name: '대저1동', ri: '', lat: 35.215, lng: 128.975 },
+          { name: '강동동', ri: '', lat: 35.195, lng: 128.925 },
+          { name: '명지동', ri: '', lat: 35.125, lng: 128.925 },
+          { name: '가락동', ri: '', lat: 35.205, lng: 128.885 },
+        ],
+        lat: 35.18,
+        lng: 128.94,
+      },
+      {
+        name: '기장군',
+        bjdongs: [
+          { name: '장안읍', ri: '좌천리', lat: 35.325, lng: 129.245 },
+          { name: '정관읍', ri: '매학리', lat: 35.325, lng: 129.175 },
+          { name: '철마면', ri: '와여리', lat: 35.285, lng: 129.155 },
+          { name: '일광읍', ri: '이천리', lat: 35.265, lng: 129.235 },
+        ],
+        lat: 35.28,
+        lng: 129.22,
+      },
+    ],
+  },
+  {
+    sido: '울산광역시',
+    code: '31',
+    count: 180,
+    sigungus: [
+      {
+        name: '울주군',
+        bjdongs: [
+          { name: '온양읍', ri: '남창리', lat: 35.415, lng: 129.285 },
+          { name: '언양읍', ri: '어음리', lat: 35.565, lng: 129.125 },
+          { name: '두동면', ri: '구미리', lat: 35.625, lng: 129.165 },
+          { name: '두서면', ri: '인보리', lat: 35.665, lng: 129.145 },
+          { name: '서생면', ri: '신암리', lat: 35.365, lng: 129.315 },
+        ],
+        lat: 35.54,
+        lng: 129.18,
+      },
+      {
+        name: '북구',
+        bjdongs: [
+          { name: '농소동', ri: '', lat: 35.635, lng: 129.345 },
+          { name: '강동동', ri: '', lat: 35.615, lng: 129.425 },
+        ],
+        lat: 35.61,
+        lng: 129.36,
+      },
+    ],
+  },
+  {
+    sido: '광주광역시',
+    code: '29',
+    count: 140,
+    sigungus: [
+      {
+        name: '광산구',
+        bjdongs: [
+          { name: '본량동', ri: '', lat: 35.195, lng: 126.715 },
+          { name: '삼도동', ri: '', lat: 35.175, lng: 126.685 },
+          { name: '임곡동', ri: '', lat: 35.225, lng: 126.735 },
+          { name: '동곡동', ri: '', lat: 35.115, lng: 126.755 },
+        ],
+        lat: 35.16,
+        lng: 126.74,
+      },
+      {
+        name: '남구',
+        bjdongs: [
+          { name: '대촌동', ri: '', lat: 35.085, lng: 126.825 },
+          { name: '지석동', ri: '', lat: 35.095, lng: 126.835 },
+        ],
+        lat: 35.10,
+        lng: 126.84,
+      },
+    ],
+  },
+  {
+    sido: '대전광역시',
+    code: '30',
+    count: 120,
+    sigungus: [
+      {
+        name: '유성구',
+        bjdongs: [
+          { name: '진잠동', ri: '', lat: 36.305, lng: 127.315 },
+          { name: '구즉동', ri: '', lat: 36.425, lng: 127.375 },
+          { name: '관평동', ri: '', lat: 36.415, lng: 127.385 },
+        ],
+        lat: 36.38,
+        lng: 127.33,
+      },
+      {
+        name: '대덕구',
+        bjdongs: [
+          { name: '신탄진동', ri: '', lat: 36.445, lng: 127.425 },
+          { name: '상서동', ri: '', lat: 36.425, lng: 127.415 },
+        ],
+        lat: 36.43,
+        lng: 127.42,
+      },
+    ],
+  },
+  {
+    sido: '서울특별시',
+    code: '11',
+    count: 80,
+    sigungus: [
+      {
+        name: '강서구',
+        bjdongs: [
+          { name: '개화동', ri: '', lat: 37.585, lng: 126.805 },
+          { name: '과해동', ri: '', lat: 37.565, lng: 126.795 },
+          { name: '오곡동', ri: '', lat: 37.545, lng: 126.775 },
+        ],
+        lat: 37.57,
+        lng: 126.80,
+      },
+      {
+        name: '서초구',
+        bjdongs: [
+          { name: '내곡동', ri: '', lat: 37.455, lng: 127.075 },
+          { name: '원지동', ri: '', lat: 37.445, lng: 127.055 },
+          { name: '신원동', ri: '', lat: 37.435, lng: 127.065 },
+        ],
+        lat: 37.45,
+        lng: 127.06,
+      },
     ],
   },
 ];
 
-const CATEGORY_POOL: LandCategory[] = ['잡종지', '임야', '전', '답', '과수원', '목장용지', '염전'];
+const CATEGORY_POOL: LandCategory[] = ['잡종지', '임야', '전', '답', '과수원', '목장용지', '염전', '대지'];
 const ZONING_POOL: Zoning[] = [
   '계획관리지역',
   '생산관리지역',
@@ -1279,7 +1431,14 @@ function synthesizeRealParcel(raw: typeof REAL_VWORLD_PARCELS_RAW[0], idx: numbe
     coordinates: [lat, lng],
     polygon: raw.polygon,
     slopeDegree,
-    aspect: pseudoRandom(seed + 17) > 0.5 ? '정남향 (180°)' : '남동향 (150°)',
+    aspect: (() => {
+      const r = pseudoRandom(seed + 17);
+      if (r > 0.45) return '정남향 (180°)';
+      if (r > 0.25) return '남동향 (150°)';
+      if (r > 0.12) return '남서향 (210°)';
+      if (r > 0.06) return '북동향 (45°)';
+      return '북서향 (315°)';
+    })(),
     suitability,
     suitabilityScore,
     regulationChecks: {
@@ -1572,7 +1731,14 @@ function buildNationwideParcels(): Parcel[] {
           coordinates: [lat, lng],
           polygon,
           slopeDegree,
-          aspect: pseudoRandom(seed + 22) > 0.5 ? '정남향 (180°)' : '남동향 (150°)',
+          aspect: (() => {
+            const r = pseudoRandom(seed + 22);
+            if (r > 0.45) return '정남향 (180°)';
+            if (r > 0.25) return '남동향 (150°)';
+            if (r > 0.12) return '남서향 (210°)';
+            if (r > 0.06) return '북동향 (45°)';
+            return '북서향 (315°)';
+          })(),
           suitability,
           suitabilityScore,
           regulationChecks: {

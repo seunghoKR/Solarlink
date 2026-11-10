@@ -19,6 +19,12 @@ export interface FilterCriteria {
   selectedZoning: Zoning | '전체';
   minGridCapacity: number;
   strictRegulationOnly: boolean;
+  // 🌟 대표님 요청: 4대 스마트 컷오프(비효율 부지 제외) 필터
+  smartEfficiencyOnly: boolean;
+  excludeLandlocked: boolean;
+  excludeSteepSlope: boolean;
+  excludeShadedAspect: boolean;
+  excludeZeroGridCapacity: boolean;
 }
 
 interface FilterPanelProps {
@@ -87,6 +93,11 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
   const [draftZoning, setDraftZoning] = useState<Zoning | '전체'>(activeCriteria.selectedZoning);
   const [draftMinGrid, setDraftMinGrid] = useState<number>(activeCriteria.minGridCapacity);
   const [draftStrictRegulation, setDraftStrictRegulation] = useState<boolean>(activeCriteria.strictRegulationOnly);
+  const [draftSmartEfficiency, setDraftSmartEfficiency] = useState<boolean>(activeCriteria.smartEfficiencyOnly || false);
+  const [draftExcludeLandlocked, setDraftExcludeLandlocked] = useState<boolean>(activeCriteria.excludeLandlocked || false);
+  const [draftExcludeSteepSlope, setDraftExcludeSteepSlope] = useState<boolean>(activeCriteria.excludeSteepSlope || false);
+  const [draftExcludeShadedAspect, setDraftExcludeShadedAspect] = useState<boolean>(activeCriteria.excludeShadedAspect || false);
+  const [draftExcludeZeroGrid, setDraftExcludeZeroGrid] = useState<boolean>(activeCriteria.excludeZeroGridCapacity || false);
 
   // 리스트 표시 개수 제한 (브라우저 스크롤 60fps 고속 유지)
   const [displayLimit, setDisplayLimit] = useState<number>(60);
@@ -98,7 +109,59 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     selectedZoning: draftZoning,
     minGridCapacity: Number(draftMinGrid) || 0,
     strictRegulationOnly: draftStrictRegulation,
+    smartEfficiencyOnly: draftSmartEfficiency,
+    excludeLandlocked: draftExcludeLandlocked,
+    excludeSteepSlope: draftExcludeSteepSlope,
+    excludeShadedAspect: draftExcludeShadedAspect,
+    excludeZeroGridCapacity: draftExcludeZeroGrid,
   });
+
+  const handleToggleSmartEfficiency = (checked: boolean) => {
+    setDraftSmartEfficiency(checked);
+    setDraftExcludeLandlocked(checked);
+    setDraftExcludeSteepSlope(checked);
+    setDraftExcludeShadedAspect(checked);
+    setDraftExcludeZeroGrid(checked);
+    onApplyCriteria({
+      ...buildCriteria(),
+      smartEfficiencyOnly: checked,
+      excludeLandlocked: checked,
+      excludeSteepSlope: checked,
+      excludeShadedAspect: checked,
+      excludeZeroGridCapacity: checked,
+    });
+    setDisplayLimit(60);
+  };
+
+  const handleToggleExclusion = (type: 'landlocked' | 'steep' | 'shaded' | 'gridZero') => {
+    let nextLandlocked = draftExcludeLandlocked;
+    let nextSteep = draftExcludeSteepSlope;
+    let nextShaded = draftExcludeShadedAspect;
+    let nextGridZero = draftExcludeZeroGrid;
+
+    if (type === 'landlocked') nextLandlocked = !nextLandlocked;
+    if (type === 'steep') nextSteep = !nextSteep;
+    if (type === 'shaded') nextShaded = !nextShaded;
+    if (type === 'gridZero') nextGridZero = !nextGridZero;
+
+    setDraftExcludeLandlocked(nextLandlocked);
+    setDraftExcludeSteepSlope(nextSteep);
+    setDraftExcludeShadedAspect(nextShaded);
+    setDraftExcludeZeroGrid(nextGridZero);
+
+    const allChecked = nextLandlocked && nextSteep && nextShaded && nextGridZero;
+    setDraftSmartEfficiency(allChecked);
+
+    onApplyCriteria({
+      ...buildCriteria(),
+      smartEfficiencyOnly: allChecked,
+      excludeLandlocked: nextLandlocked,
+      excludeSteepSlope: nextSteep,
+      excludeShadedAspect: nextShaded,
+      excludeZeroGridCapacity: nextGridZero,
+    });
+    setDisplayLimit(60);
+  };
 
   // 🌟 대표님 요청: 지목 토글 시 실시간으로 즉시 필터링 반영 + 검색 버튼으로도 언제든 확정 가능!
   const handleToggleCategory = (category: LandCategory) => {
@@ -134,6 +197,11 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
     setDraftZoning('전체');
     setDraftMinGrid(0);
     setDraftStrictRegulation(false);
+    setDraftSmartEfficiency(false);
+    setDraftExcludeLandlocked(false);
+    setDraftExcludeSteepSlope(false);
+    setDraftExcludeShadedAspect(false);
+    setDraftExcludeZeroGrid(false);
     onResetFilters();
     setDisplayLimit(60);
   };
@@ -311,6 +379,87 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
               <div className="w-8 h-4.5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-amber-500"></div>
             </label>
           </div>
+
+          {/* F. 🌟 대표님 요청: 4대 스마트 컷오프 (비효율 부지 제외) 엔진 */}
+          <div className="pt-2.5 border-t border-slate-800 space-y-2">
+            <div className="flex items-center justify-between bg-amber-500/10 p-2 rounded-lg border border-amber-500/25">
+              <div className="flex items-center space-x-1.5">
+                <Zap className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <div>
+                  <span className="font-bold text-slate-100 text-xs block">스마트 고효율 알짜 부지만 보기</span>
+                  <span className="text-[10px] text-amber-300/80">맹지·급경사·음영·계통포화 일괄 컷오프</span>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer ml-2 shrink-0">
+                <input
+                  type="checkbox"
+                  checked={draftSmartEfficiency}
+                  onChange={(e) => handleToggleSmartEfficiency(e.target.checked)}
+                  className="sr-only peer"
+                />
+                <div className="w-8 h-4.5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-gradient-to-r peer-checked:from-amber-500 peer-checked:to-amber-600"></div>
+              </label>
+            </div>
+
+            {/* 4대 비효율 부지 개별 제외 칩 */}
+            <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+              <button
+                type="button"
+                onClick={() => handleToggleExclusion('landlocked')}
+                className={`py-1.5 px-2 rounded-md text-[11px] font-medium border flex items-center justify-between transition cursor-pointer ${
+                  draftExcludeLandlocked
+                    ? 'bg-rose-950/70 border-rose-500/60 text-rose-300 font-semibold'
+                    : 'bg-slate-800/60 border-slate-700/80 text-slate-400 hover:text-slate-200'
+                }`}
+                title="진입로 폭 3~4m 미확보 맹지 부지를 검색에서 제외합니다"
+              >
+                <span>🚫 맹지 제외</span>
+                {draftExcludeLandlocked && <Check className="w-3 h-3 text-rose-400 shrink-0" />}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleToggleExclusion('steep')}
+                className={`py-1.5 px-2 rounded-md text-[11px] font-medium border flex items-center justify-between transition cursor-pointer ${
+                  draftExcludeSteepSlope
+                    ? 'bg-rose-950/70 border-rose-500/60 text-rose-300 font-semibold'
+                    : 'bg-slate-800/60 border-slate-700/80 text-slate-400 hover:text-slate-200'
+                }`}
+                title="토목공사비 과다 및 산지관리법 허가 불가 급경사지(15° 초과)를 제외합니다"
+              >
+                <span>🚫 급경사(15°+) 제외</span>
+                {draftExcludeSteepSlope && <Check className="w-3 h-3 text-rose-400 shrink-0" />}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleToggleExclusion('shaded')}
+                className={`py-1.5 px-2 rounded-md text-[11px] font-medium border flex items-center justify-between transition cursor-pointer ${
+                  draftExcludeShadedAspect
+                    ? 'bg-rose-950/70 border-rose-500/60 text-rose-300 font-semibold'
+                    : 'bg-slate-800/60 border-slate-700/80 text-slate-400 hover:text-slate-200'
+                }`}
+                title="일조량이 불리한 북향, 북동향, 북서향 음영 부지를 제외합니다"
+              >
+                <span>🚫 북향/음영 제외</span>
+                {draftExcludeShadedAspect && <Check className="w-3 h-3 text-rose-400 shrink-0" />}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleToggleExclusion('gridZero')}
+                className={`py-1.5 px-2 rounded-md text-[11px] font-medium border flex items-center justify-between transition cursor-pointer ${
+                  draftExcludeZeroGrid
+                    ? 'bg-rose-950/70 border-rose-500/60 text-rose-300 font-semibold'
+                    : 'bg-slate-800/60 border-slate-700/80 text-slate-400 hover:text-slate-200'
+                }`}
+                title="한전 변전소 여유 용량이 소진된 계통 포화 부지를 제외합니다"
+              >
+                <span>🚫 계통포화 제외</span>
+                {draftExcludeZeroGrid && <Check className="w-3 h-3 text-rose-400 shrink-0" />}
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* 🌟 3. 대표님 요청: 검색 실행 버튼 (Search Action Bar) */}
@@ -342,7 +491,7 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
           <span className="text-xs font-bold text-slate-300">
             검색 결과 <span className="text-amber-400 font-extrabold text-sm">{parcels.length.toLocaleString()}</span>건
             <span className="text-slate-500 text-[11px] font-normal ml-1">
-              / 전국 {totalPoolCount.toLocaleString()}건 풀
+              / 전국 17개 시·도 {totalPoolCount.toLocaleString()}건 풀
             </span>
           </span>
           <span className="text-[11px] text-slate-400">GIS 적합도순</span>

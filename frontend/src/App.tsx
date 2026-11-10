@@ -133,6 +133,11 @@ export const App: React.FC = () => {
     selectedZoning: '전체',
     minGridCapacity: 0,
     strictRegulationOnly: false,
+    smartEfficiencyOnly: false,
+    excludeLandlocked: false,
+    excludeSteepSlope: false,
+    excludeShadedAspect: false,
+    excludeZeroGridCapacity: false,
   });
 
   const handleApplyCriteria = (criteria: FilterCriteria) => {
@@ -155,6 +160,11 @@ export const App: React.FC = () => {
       selectedZoning: '전체',
       minGridCapacity: 0,
       strictRegulationOnly: false,
+      smartEfficiencyOnly: false,
+      excludeLandlocked: false,
+      excludeSteepSlope: false,
+      excludeShadedAspect: false,
+      excludeZeroGridCapacity: false,
     });
     setShowBookmarksOnly(false);
     setSearchQuery('');
@@ -640,6 +650,27 @@ export const App: React.FC = () => {
 
       // 이격거리 완전충족 필터 ('예비적합'만 허용)
       if (activeCriteria.strictRegulationOnly && p.suitability !== '예비적합') {
+        return false;
+      }
+
+      // 🌟 대표님 요청: 4대 스마트 컷오프 (비효율 부지 제외)
+      const shouldExcludeLandlocked = activeCriteria.smartEfficiencyOnly || activeCriteria.excludeLandlocked;
+      if (shouldExcludeLandlocked && (p.realEstate?.isLandlocked || p.realEstate?.roadAccess.includes('맹지'))) {
+        return false;
+      }
+
+      const shouldExcludeSteep = activeCriteria.smartEfficiencyOnly || activeCriteria.excludeSteepSlope;
+      if (shouldExcludeSteep && p.slopeDegree > 15) {
+        return false;
+      }
+
+      const shouldExcludeShaded = activeCriteria.smartEfficiencyOnly || activeCriteria.excludeShadedAspect;
+      if (shouldExcludeShaded && p.aspect.includes('북')) {
+        return false;
+      }
+
+      const shouldExcludeZeroGrid = activeCriteria.smartEfficiencyOnly || activeCriteria.excludeZeroGridCapacity;
+      if (shouldExcludeZeroGrid && ((p.grid?.availableCapacityMw || 0) < 0.8 || p.grid?.status === '포화')) {
         return false;
       }
 
