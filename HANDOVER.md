@@ -17,7 +17,12 @@
    * **실서버**: `https://re100life.com` (iwinv 웹호스팅, `115.68.168.242`)
    * **로컬 개발 경로**: `C:\Dev\태양광부지발굴` (노트북에서도 동일 경로 권장)
    * **Synology NAS 백업**: `Y:\SynologyDrive\태양광부지발굴` (최신 소스 동기화 완료)
-   * **GitHub Head**: `d99bc5d fix: stabilize map navigation, eliminate ghost polygons and unify listing address with cadastral view` (최신 푸시 완료)
+   * **GitHub Head**: `8fb0353 feat: release v1.2.0 - launch nationwide 1M valid solar sites index, zoom-adaptive cluster visualization and PostGIS spatial architecture`
+   * **전자결제 PG (토스페이먼츠)**:
+     * 상호명: **누리오**
+     * 상점아이디(MID): `nuriohp7sm`
+     * 상태: 가입 신청서 작성 단계 (심사 기한: ~2026-12-11)
+     * 용도: Lifety Solar SaaS 구독 결제 및 부지 정밀 분석 보고서 유료 결제 연동 예정
 
 2. **노트북에서 최신 소스 당겨받기 (둘 중 하나 실행)**:
    * **방법 A (Git 권장)**:
