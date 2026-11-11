@@ -125,6 +125,8 @@ export interface Parcel {
 export interface RegionSummary {
   sido: string;
   candidateCount: number;
+  totalValidSitesCount: number; // 전국 100만 건 AI 유효부지 중 해당 시도 통계치 (합계: 1,000,000건)
+  totalParcelsCount: number; // 전체 국토부 지번 수 (3,950만 필지 중)
   center: [number, number];
   gridCapacityAvg: number;
 }

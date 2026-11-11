@@ -193,6 +193,46 @@ const ZoomSliderControl: React.FC<{
   );
 };
 
+// 🌟 대표님 요청: 전국 100만 건 유효부지 시도 팝업 컴포넌트 (useMap 줌인 연동)
+const RegionPopupContent: React.FC<{ region: RegionSummary }> = ({ region }) => {
+  const map = useMap();
+  return (
+    <div className="p-2 text-slate-900 min-w-[210px]">
+      <div className="flex items-center justify-between border-b border-slate-200 pb-1 mb-2">
+        <h4 className="font-extrabold text-amber-600 text-sm">{region.sido}</h4>
+        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800">
+          계통 평균 {region.gridCapacityAvg} MW
+        </span>
+      </div>
+      <div className="space-y-1.5 text-xs">
+        <div className="flex justify-between items-center bg-amber-50/80 p-1.5 rounded border border-amber-200">
+          <span className="text-slate-700 font-medium">4대 컷오프 유효 부지:</span>
+          <strong className="text-amber-700 font-extrabold text-xs">
+            {(region.totalValidSitesCount || region.candidateCount).toLocaleString()}건
+          </strong>
+        </div>
+        <div className="flex justify-between text-slate-500 text-[11px] px-1">
+          <span>국토부 총 지번수:</span>
+          <span>약 {Math.round((region.totalParcelsCount || 1000000) / 10000).toLocaleString()}만 필지</span>
+        </div>
+        <div className="flex justify-between text-slate-500 text-[11px] px-1">
+          <span>즉시 탐색 표본:</span>
+          <span className="font-semibold text-slate-700">{region.candidateCount.toLocaleString()}건</span>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => {
+          map.flyTo(region.center, 13, { duration: 1.0 });
+        }}
+        className="w-full mt-2.5 py-1.5 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold text-xs rounded transition shadow cursor-pointer text-center"
+      >
+        이 지역 정밀 발굴 이동 (Zoom In) ➔
+      </button>
+    </div>
+  );
+};
+
 export const MapView: React.FC<MapViewProps> = ({
   parcels,
   regions,
@@ -263,34 +303,51 @@ export const MapView: React.FC<MapViewProps> = ({
     };
   }, [selectedParcel?.id, selectedParcel?.coordinates]);
 
-  // 커스텀 시도 카운트 버블 아이콘
+  // 커스텀 시도 카운트 버블 아이콘 (전국 100만 건 AI 유효부지 전수 연동 뱃지)
   const createRegionIcon = (region: RegionSummary) => {
+    const validCountDisplay = region.totalValidSitesCount
+      ? region.totalValidSitesCount >= 10000
+        ? `${(region.totalValidSitesCount / 10000).toFixed(1)}만`
+        : `${region.totalValidSitesCount.toLocaleString()}`
+      : `${region.candidateCount.toLocaleString()}`;
+
     return L.divIcon({
       className: 'custom-region-marker',
       html: `
         <div style="
-          background: rgba(15, 23, 42, 0.9);
-          backdrop-filter: blur(6px);
-          border: 2px solid #f59e0b;
+          background: linear-gradient(135deg, rgba(15, 23, 42, 0.95), rgba(30, 41, 59, 0.92));
+          backdrop-filter: blur(8px);
+          border: 1.5px solid #f59e0b;
           color: #f8fafc;
-          padding: 5px 10px;
+          padding: 6px 12px;
           border-radius: 9999px;
-          box-shadow: 0 4px 16px rgba(245, 158, 11, 0.45);
-          font-family: sans-serif;
+          box-shadow: 0 4px 20px rgba(245, 158, 11, 0.4), 0 2px 6px rgba(0,0,0,0.6);
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
           font-weight: 700;
           font-size: 11px;
           white-space: nowrap;
           display: flex;
           align-items: center;
-          gap: 5px;
+          gap: 6px;
           cursor: pointer;
         ">
-          <span style="color: #fbbf24;">${region.sido}</span>
-          <span style="background: #f59e0b; color: #09090b; padding: 2px 7px; border-radius: 9999px; font-size: 10px; font-weight: 800;">${region.candidateCount.toLocaleString()}</span>
+          <span style="color: #fbbf24; display: flex; align-items: center; gap: 4px;">
+            <span style="width: 6px; height: 6px; border-radius: 50%; background: #22c55e; box-shadow: 0 0 8px #22c55e;"></span>
+            ${region.sido}
+          </span>
+          <span style="
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: #09090b;
+            padding: 2px 7px;
+            border-radius: 9999px;
+            font-size: 10px;
+            font-weight: 900;
+            letter-spacing: -0.2px;
+          ">유효 ${validCountDisplay}건</span>
         </div>
       `,
-      iconSize: [110, 32],
-      iconAnchor: [55, 16],
+      iconSize: [140, 36],
+      iconAnchor: [70, 18],
     });
   };
 
@@ -948,7 +1005,7 @@ export const MapView: React.FC<MapViewProps> = ({
           />
         )}
 
-        {/* 시도 카운트 버블 (축소 상태일 때 표시) */}
+        {/* 시도 카운트 버블 (전국 100만 건 유효부지 줌 레벨 적응형 표시) */}
         {currentZoom < 9 &&
           !selectedParcel &&
           regions.map((region) => (
@@ -956,13 +1013,17 @@ export const MapView: React.FC<MapViewProps> = ({
               key={region.sido}
               position={region.center}
               icon={createRegionIcon(region)}
+              eventHandlers={{
+                click: (e) => {
+                  const map = (e.target as any)._map;
+                  if (map) {
+                    map.flyTo(region.center, 11, { duration: 1.2 });
+                  }
+                },
+              }}
             >
               <Popup>
-                <div className="p-1 text-slate-900">
-                  <h4 className="font-bold text-amber-600">{region.sido}</h4>
-                  <p className="text-xs mt-1">발굴 후보지: {region.candidateCount.toLocaleString()}건</p>
-                  <p className="text-xs">평균 계통여유: {region.gridCapacityAvg} MW</p>
-                </div>
+                <RegionPopupContent region={region} />
               </Popup>
             </Marker>
           ))}

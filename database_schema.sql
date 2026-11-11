@@ -98,3 +98,101 @@ CREATE TABLE IF NOT EXISTS parcels_cache (
 CREATE INDEX IF NOT EXISTS idx_parcels_coords ON parcels_cache(latitude, longitude);
 CREATE INDEX IF NOT EXISTS idx_parcels_suitability ON parcels_cache(suitability);
 CREATE INDEX IF NOT EXISTS idx_parcels_area ON parcels_cache(area_pyeong);
+
+-- ==============================================================================
+-- 6. 전국 100만 건 태양광 유효 부지 공간 데이터베이스 (PostGIS Spatial Engine)
+-- 4대 컷오프(맹지, 15° 급경사, 음영, 계통포화)를 통과한 전국 100만 건 전수 인덱스
+-- ==============================================================================
+-- PostGIS 공간 엔진 확장 활성화
+CREATE EXTENSION IF NOT EXISTS postgis;
+
+CREATE TABLE IF NOT EXISTS solar_valid_parcels_1m (
+    id BIGSERIAL PRIMARY KEY,
+    pnu VARCHAR(19) UNIQUE NOT NULL,
+    address VARCHAR(255) NOT NULL,
+    sido VARCHAR(64) NOT NULL,
+    sigungu VARCHAR(64) NOT NULL,
+    bjdong VARCHAR(64) NOT NULL,
+    land_category VARCHAR(32) NOT NULL,            -- 대지, 잡종지, 임야, 전, 답 등
+    area_pyeong INT NOT NULL,                     -- 면적 (평)
+    area_sqm INT NOT NULL,                        -- 면적 (m²)
+    zoning VARCHAR(64) NOT NULL,                  -- 계획관리지역, 자연녹지지역 등
+    slope_degree NUMERIC(4, 1) NOT NULL,          -- 경사도 (15도 이하 통과)
+    aspect VARCHAR(32) NOT NULL,                  -- 향/일조 (정남향, 남동향, 남서향)
+    is_landlocked BOOLEAN DEFAULT FALSE,          -- 맹지 여부 (FALSE: 진입로 3~4m 확보)
+    road_access VARCHAR(128),                     -- 도로 접면 현황
+    substation_name VARCHAR(64),                  -- 연계 154kV 변전소
+    available_capacity_mw NUMERIC(4, 1) NOT NULL, -- 변전소 여유 용량 (MW)
+    estimated_capacity_kwp INT NOT NULL,          -- 추천 설비용량 (kWp)
+    suitability_score INT DEFAULT 85,             -- GIS 적합도 점수 (100점 만점)
+    geom GEOMETRY(Point, 4326) NOT NULL,          -- WGS84 EPSG:4326 공간 포인트
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- PostGIS 4대 초고속 공간 및 필터 인덱스
+CREATE INDEX IF NOT EXISTS idx_solar_1m_geom ON solar_valid_parcels_1m USING GIST(geom);
+CREATE INDEX IF NOT EXISTS idx_solar_1m_sido ON solar_valid_parcels_1m(sido);
+CREATE INDEX IF NOT EXISTS idx_solar_1m_category ON solar_valid_parcels_1m(land_category);
+CREATE INDEX IF NOT EXISTS idx_solar_1m_pyeong ON solar_valid_parcels_1m(area_pyeong);
+CREATE INDEX IF NOT EXISTS idx_solar_1m_score ON solar_valid_parcels_1m(suitability_score DESC);
+
+-- 시·도 단위 100만 건 유효 부지 고속 실시간 집계 뷰 (지도 Zoom 6~9 광역 버블용)
+CREATE OR REPLACE VIEW v_solar_region_aggregates AS
+SELECT 
+    sido,
+    COUNT(*) AS total_valid_sites,
+    ROUND(AVG(available_capacity_mw), 1) AS avg_grid_capacity_mw,
+    ROUND(AVG(suitability_score), 0) AS avg_suitability_score,
+    SUM(estimated_capacity_kwp) AS total_potential_kwp
+FROM solar_valid_parcels_1m
+GROUP BY sido;
+
+-- 지도 화면 BBOX(시야각) 범위 내 상위 부지 고속 쿼리 함수 (Zoom 14~19 정밀 탐색용)
+-- 예시: SELECT * FROM fn_search_parcels_in_bbox(34.80, 126.60, 34.85, 126.70, 100, 100000, 200);
+CREATE OR REPLACE FUNCTION fn_search_parcels_in_bbox(
+    min_lat NUMERIC,
+    min_lng NUMERIC,
+    max_lat NUMERIC,
+    max_lng NUMERIC,
+    min_pyeong INT DEFAULT 100,
+    max_pyeong INT DEFAULT 1000000,
+    query_limit INT DEFAULT 200
+)
+RETURNS TABLE (
+    pnu VARCHAR(19),
+    address VARCHAR(255),
+    sido VARCHAR(64),
+    sigungu VARCHAR(64),
+    land_category VARCHAR(32),
+    area_pyeong INT,
+    slope_degree NUMERIC(4, 1),
+    substation_name VARCHAR(64),
+    available_capacity_mw NUMERIC(4, 1),
+    suitability_score INT,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION
+)
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        p.pnu,
+        p.address,
+        p.sido,
+        p.sigungu,
+        p.land_category,
+        p.area_pyeong,
+        p.slope_degree,
+        p.substation_name,
+        p.available_capacity_mw,
+        p.suitability_score,
+        ST_Y(p.geom) AS latitude,
+        ST_X(p.geom) AS longitude
+    FROM solar_valid_parcels_1m p
+    WHERE p.geom && ST_MakeEnvelope(min_lng, min_lat, max_lng, max_lat, 4326)
+      AND p.area_pyeong >= min_pyeong
+      AND p.area_pyeong <= max_pyeong
+    ORDER BY p.suitability_score DESC
+    LIMIT query_limit;
+END;
+$$ LANGUAGE plpgsql;

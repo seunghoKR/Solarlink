@@ -459,6 +459,14 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
                 {draftExcludeZeroGrid && <Check className="w-3 h-3 text-rose-400 shrink-0" />}
               </button>
             </div>
+
+            {/* 💡 100만 건 유효 부지 팩트 안내 */}
+            <div className="mt-2 px-2 py-1.5 rounded bg-slate-950/60 border border-slate-800/90 text-[10px] text-slate-400 leading-relaxed flex items-start space-x-1.5">
+              <span className="text-amber-400 font-bold shrink-0">💡 팩트</span>
+              <span>
+                전국 3,950만 필지 중 4대 비효율을 배제한 <strong className="text-amber-300">약 100만 개 유효 부지 풀</strong>을 지도 줌 레벨에 따라 지능형으로 스크리닝합니다.
+              </span>
+            </div>
           </div>
         </div>
 
@@ -488,13 +496,20 @@ export const FilterPanel: React.FC<FilterPanelProps> = ({
 
         {/* 4. Candidate List Header */}
         <div className="px-3.5 py-2.5 bg-slate-800/40 border-b border-slate-800 flex items-center justify-between">
-          <span className="text-xs font-bold text-slate-300">
-            검색 결과 <span className="text-amber-400 font-extrabold text-sm">{parcels.length.toLocaleString()}</span>건
-            <span className="text-slate-500 text-[11px] font-normal ml-1">
-              / 전국 17개 시·도 {totalPoolCount.toLocaleString()}건 풀
+          <div className="flex flex-col">
+            <div className="flex items-center space-x-1.5">
+              <span className="text-xs font-bold text-slate-300">
+                검색 결과 <span className="text-amber-400 font-extrabold text-sm">{parcels.length.toLocaleString()}</span>건
+              </span>
+              <span className="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                전국 100만 유효풀 연동
+              </span>
+            </div>
+            <span className="text-slate-500 text-[10px] mt-0.5">
+              표본 {totalPoolCount.toLocaleString()}건 즉시 탐색 / 지도 영역 국토부 실필지 확장 지원
             </span>
-          </span>
-          <span className="text-[11px] text-slate-400">GIS 적합도순</span>
+          </div>
+          <span className="text-[11px] text-slate-400 shrink-0">GIS 적합도순</span>
         </div>
 
         {/* 5. Candidate List Items */}
