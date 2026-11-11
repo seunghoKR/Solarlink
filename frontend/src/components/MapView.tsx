@@ -15,6 +15,7 @@ import L from 'leaflet';
 import type { Parcel, RegionSummary } from '../types/solar';
 import { reverseGeocodeCoordinate, type ReverseGeocodeResult } from '../services/geocodingService';
 import { fetchRealCadastralPolygon, type SearchBounds } from '../services/cadastralService';
+import { findNearestSubstation } from '../services/substationService';
 import {
   Sparkles,
   MapPin,
@@ -229,6 +230,75 @@ const RegionPopupContent: React.FC<{ region: RegionSummary }> = ({ region }) => 
       >
         이 지역 정밀 발굴 이동 (Zoom In) ➔
       </button>
+    </div>
+  );
+};
+
+// 🌟 관리자 요청 핵심 해결: 선택된 부지와 관할 154kV 변전소 계통망 한눈에 보기 컨트롤러
+const SubstationOverviewBanner: React.FC<{
+  selectedParcel: Parcel | null;
+  showGridLines: boolean;
+}> = ({ selectedParcel, showGridLines }) => {
+  const map = useMap();
+  const [isOverview, setIsOverview] = useState(false);
+
+  useEffect(() => {
+    setIsOverview(false);
+  }, [selectedParcel?.id]);
+
+  if (!selectedParcel || !showGridLines || !selectedParcel.grid?.substationCoordinates) {
+    return null;
+  }
+
+  const subName = selectedParcel.grid.substationName;
+  const dist = selectedParcel.grid.substationDistanceKm;
+  const avail = selectedParcel.grid.availableCapacityMw;
+  const subCoords = selectedParcel.grid.substationCoordinates;
+
+  const handleToggleView = () => {
+    if (!isOverview) {
+      map.fitBounds([selectedParcel.coordinates, subCoords], {
+        padding: [90, 90],
+        maxZoom: 14,
+      });
+      setIsOverview(true);
+    } else {
+      map.flyTo(selectedParcel.coordinates, 18, { duration: 0.8 });
+      setIsOverview(false);
+    }
+  };
+
+  return (
+    <div
+      className="leaflet-top leaflet-center pointer-events-auto select-none"
+      style={{
+        position: 'absolute',
+        top: 14,
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 1000,
+      }}
+    >
+      <div className="flex items-center space-x-2 bg-slate-950/95 backdrop-blur-md border border-cyan-500/60 text-white px-3.5 py-1.5 rounded-full shadow-2xl animate-in fade-in slide-in-from-top-2 duration-200">
+        <span className="flex items-center space-x-1.5 text-xs">
+          <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse shrink-0"></span>
+          <span className="text-cyan-300 font-extrabold flex items-center shrink-0">
+            <span className="mr-1 text-sm">⚡</span>154kV {subName}
+          </span>
+          <span className="text-slate-300 text-[11px] font-mono shrink-0">직선 {dist}km</span>
+          <span className="px-1.5 py-0.5 rounded bg-cyan-500/20 text-cyan-200 border border-cyan-500/40 text-[10px] font-bold shrink-0">
+            여유 {avail}MW
+          </span>
+        </span>
+        <button
+          type="button"
+          onClick={handleToggleView}
+          className="ml-1 px-3 py-1 rounded-full bg-gradient-to-r from-cyan-500 to-sky-500 hover:from-cyan-400 hover:to-sky-400 text-slate-950 font-black text-[11px] transition cursor-pointer shadow active:scale-95 whitespace-nowrap flex items-center space-x-1"
+          title={isOverview ? '부지 상세 지적(18배율)으로 다시 줌인' : '부지와 변전소 인입선로 전체를 한 화면에 조망'}
+        >
+          <span>{isOverview ? '🔍 부지 정밀 줌 (18x)' : '⚡ 계통망 한눈에 보기 ➔'}</span>
+        </button>
+      </div>
     </div>
   );
 };
@@ -583,42 +653,11 @@ export const MapView: React.FC<MapViewProps> = ({
         protectionZone: { intersected: false, zoneName: '해당없음', areaRatio: 0 },
         slopeCheck: { degree: data.slopeDegree, limit: 15, pass: data.slopeDegree <= 15 },
       },
-      grid: {
-        substationName: `${data.sigungu || '관할'}변전소`,
-        substationDistanceKm: 3.4,
-        substationCoordinates: [lat + 0.015, lng + 0.02],
-        substationCapacityTotalMw: parseFloat((data.gridCapacityMw * 3.2 + 3.8).toFixed(1)),
-        mtrNumber: '#2 M.Tr',
-        mtrAvailableMw: parseFloat((data.gridCapacityMw * 1.2).toFixed(1)),
-        dlName: `${data.bjdong || '인접'}DL #1`,
-        availableCapacityMw: data.gridCapacityMw,
-        status: data.gridCapacityMw >= 2.0 ? '여유' : '보통',
-        updatedAt: '2026-11-03',
-        distributionLines: [
-          {
-            name: `${data.bjdong || '인근'}DL #1 (최단거리)`,
-            availableMw: data.gridCapacityMw,
-            status: data.gridCapacityMw >= 2.0 ? '여유' : '보통',
-            distanceKm: 1.1,
-            estimatedInterconnectionCostWon: 49500000,
-            isRecommended: true,
-          },
-          {
-            name: `${data.sigungu || '지역'}선로DL #2`,
-            availableMw: parseFloat(Math.max(0.4, data.gridCapacityMw * 0.6).toFixed(1)),
-            status: '보통',
-            distanceKm: 2.3,
-            estimatedInterconnectionCostWon: 103500000,
-          },
-          {
-            name: `연계간선DL #3`,
-            availableMw: 0.2,
-            status: '포화',
-            distanceKm: 3.8,
-            estimatedInterconnectionCostWon: 171000000,
-          },
-        ],
-      },
+      grid: findNearestSubstation(lat, lng, {
+        sido: data.sido,
+        sigungu: data.sigungu,
+        bjdong: data.bjdong,
+      }),
       realEstate: {
         avgTradingPricePerPyeong: 78000,
         estimatedLandPriceTotalWon: Math.round(data.estimatedPyeong * 78000),
@@ -915,6 +954,12 @@ export const MapView: React.FC<MapViewProps> = ({
         zoomDelta={0.5}
         wheelPxPerZoomLevel={90}
       >
+        {/* 🌟 관리자 요청: 선택 부지 관할 154kV 변전소 계통망 한눈에 보기 배너 */}
+        <SubstationOverviewBanner
+          selectedParcel={selectedParcel}
+          showGridLines={showGridLines}
+        />
+
         <CadastralZoomController
           showCadastral={showCadastral}
           onZoomChange={setCurrentZoom}

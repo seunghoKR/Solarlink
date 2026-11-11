@@ -3,6 +3,7 @@ import { MOCK_PARCELS, REGION_SUMMARIES } from './data/mockParcels';
 import type { Parcel, LandCategory, Zoning } from './types/solar';
 import type { User } from './types/auth';
 import { searchAddressCoordinate } from './services/geocodingService';
+import { findNearestSubstation } from './services/substationService';
 import {
   fetchRealCadastralByAddress,
   fetchRealCadastralPolygon,
@@ -221,6 +222,13 @@ export const App: React.FC = () => {
       const resolvedZoning = (cadastral.zoning || matched?.zoning || '계획관리지역') as Zoning;
       const resolvedJimok = (cadastral.normalizedJimok || normalizeJimok(cadastral.jimok) || matched?.landCategory || '대지') as LandCategory;
 
+      // 🌟 관리자 요청 핵심 해결: 검색된 주소지의 위경도(lat, lng) 기준 전국 최인접 154kV 한전 변전소 및 계통망 자동 탐색!
+      const matchedGrid = matched?.grid || findNearestSubstation(lat, lng, {
+        sido: cadastral.sido || trimmed.split(' ')[0],
+        sigungu: cadastral.sigungu || trimmed.split(' ')[1],
+        bjdong: cadastral.ri || cadastral.emd || '관할',
+      });
+
       const realParcel: Parcel = {
         id: matched?.id || `search_${Date.now()}`,
         pnu: pnuCode,
@@ -251,27 +259,7 @@ export const App: React.FC = () => {
           protectionZone: { intersected: false, zoneName: '해당없음', areaRatio: 0 },
           slopeCheck: { degree: 3.5, limit: 15, pass: true },
         },
-        grid: matched?.grid || {
-          substationName: `${cadastral.emd || '관할'}변전소`,
-          substationDistanceKm: 3.5,
-          substationCoordinates: [lat + 0.015, lng + 0.02],
-          substationCapacityTotalMw: 14.5,
-          mtrNumber: '#1 M.Tr',
-          mtrAvailableMw: 4.2,
-          dlName: `${cadastral.ri || '인접'}DL #1`,
-          availableCapacityMw: 2.5,
-          status: '여유',
-          updatedAt: '2026-11-04',
-          distributionLines: [
-            {
-              name: `${cadastral.ri || '인접'}DL #1`,
-              availableMw: 2.5,
-              status: '여유',
-              distanceKm: 1.2,
-              estimatedInterconnectionCostWon: 45000000,
-            },
-          ],
-        },
+        grid: matchedGrid,
         realEstate: matched?.realEstate || {
           avgTradingPricePerPyeong: 75000,
           estimatedLandPriceTotalWon: Math.round(pyeong * 75000),
@@ -300,6 +288,13 @@ export const App: React.FC = () => {
       saveLastViewedParcel(currentUser?.id || 'guest', realParcel);
       addRecentSearch(trimmed, displayAddress, [lat, lng], currentUser?.id || 'guest');
       recordAuditLog(currentUser, 'SEARCH_ADDRESS', `국토부 실시간 지적도 매칭: ${trimmed} -> ${displayAddress} (PNU: ${pnuCode})`);
+      setSearchToast({
+        message: `⚡ [한전 계통망 연계] '${displayAddress}' 부지 ➔ 관할 154kV ${matchedGrid.substationName} (직선 ${matchedGrid.substationDistanceKm}km / 여유 ${matchedGrid.availableCapacityMw}MW)`,
+        type: 'success',
+      });
+      setTimeout(() => {
+        setSearchToast(null);
+      }, 5500);
       return;
     }
 
@@ -377,42 +372,11 @@ export const App: React.FC = () => {
         protectionZone: { intersected: false, zoneName: '해당없음', areaRatio: 0 },
         slopeCheck: { degree: 3.8, limit: 15, pass: true },
       },
-      grid: {
-        substationName: `${geo?.sigungu || '전주'}변전소`,
-        substationDistanceKm: 3.2,
-        substationCoordinates: [lat + 0.012, lng + 0.015],
-        substationCapacityTotalMw: 18.2,
-        mtrNumber: '#1 M.Tr',
-        mtrAvailableMw: 5.4,
-        dlName: `${trimmed.split(' ')[1] || '관할'}DL #1`,
-        availableCapacityMw: 3.5,
-        status: '여유',
-        updatedAt: '2026-11-03',
-        distributionLines: [
-          {
-            name: `${trimmed.split(' ')[1] || '인근'}DL #1 (추천)`,
-            availableMw: 3.5,
-            status: '여유',
-            distanceKm: 0.9,
-            estimatedInterconnectionCostWon: 40500000,
-            isRecommended: true,
-          },
-          {
-            name: `${geo?.sigungu || '지역'}간선DL #2`,
-            availableMw: 1.8,
-            status: '보통',
-            distanceKm: 2.1,
-            estimatedInterconnectionCostWon: 94500000,
-          },
-          {
-            name: `외곽연계DL #3`,
-            availableMw: 0.3,
-            status: '포화',
-            distanceKm: 3.6,
-            estimatedInterconnectionCostWon: 162000000,
-          },
-        ],
-      },
+      grid: findNearestSubstation(lat, lng, {
+        sido: geo?.sido || trimmed.split(' ')[0],
+        sigungu: geo?.sigungu || trimmed.split(' ')[1],
+        bjdong: geo?.bjdong || '해당지역',
+      }),
       realEstate: {
         avgTradingPricePerPyeong: 89000,
         estimatedLandPriceTotalWon: 2150 * 89000,
@@ -441,15 +405,19 @@ export const App: React.FC = () => {
     setSelectedParcel(newParcel);
     saveLastViewedParcel(currentUser?.id || 'guest', newParcel);
 
+    const matchedSub = newParcel.grid?.substationName || '관할변전소';
+    const subDist = newParcel.grid?.substationDistanceKm || 3.2;
+    const subCap = newParcel.grid?.availableCapacityMw || 3.5;
+
     // 알림창(alert)으로 흐름을 끊지 않고, 상단 토스트 배너로 자연스럽게 상태 설명!
     if (geo?.isParentFallback) {
       setSearchToast({
-        message: `💡 '${trimmed}' 지번은 지적공부상 결번 상태여서 가장 인접한 본번(${displayAddress}) 위치로 자동 이동했습니다.`,
+        message: `💡 '${trimmed}' 결번으로 인근 본번(${displayAddress}) 이동 ➔ [한전 계통망 연계] 154kV ${matchedSub} (직선 ${subDist}km / 여유 ${subCap}MW)`,
         type: 'info',
       });
     } else {
       setSearchToast({
-        message: `✓ 검색하신 '${displayAddress}' 부지로 지도를 이동하고 정밀 분석을 완료했습니다.`,
+        message: `⚡ [한전 계통망 연계] '${displayAddress}' 부지 ➔ 관할 154kV ${matchedSub} (직선 ${subDist}km / 여유 ${subCap}MW)`,
         type: 'success',
       });
     }

@@ -8,6 +8,7 @@
  */
 
 import type { LandCategory, Zoning, Parcel } from '../types/solar';
+import { findNearestSubstation } from './substationService';
 
 const VWORLD_KEY = import.meta.env.VITE_VWORLD_API_KEY || 'E810A4B0-5AFE-4FF7-9E1F-2B905CFAD2B7';
 const DOMAIN = 're100life.com';
@@ -541,8 +542,6 @@ function synthesizeDiscoveredParcel(
   const zoning = raw.zoning || DEFAULT_ZONINGS[Math.floor(pseudoRandom(seed + 1) * DEFAULT_ZONINGS.length)];
 
   const dlAvailable = parseFloat((0.3 + pseudoRandom(seed + 2) * 6.9).toFixed(1));
-  const gridStatus: '여유' | '보통' | '포화' = dlAvailable >= 2 ? '여유' : dlAvailable >= 0.8 ? '보통' : '포화';
-
   const isForest = cat === '임야';
   const slope = parseFloat(((isForest ? 4.5 : 1.2) + pseudoRandom(seed + 3) * (isForest ? 14 : 8.5)).toFixed(1));
   const resDist = Math.floor(140 + pseudoRandom(seed + 4) * 580);
@@ -574,42 +573,6 @@ function synthesizeDiscoveredParcel(
   const irr = parseFloat((6.8 + pseudoRandom(seed + 7) * 4.2).toFixed(1));
   const npv = Math.round(capex * 0.45);
   const payback = parseFloat((5.2 + pseudoRandom(seed + 8) * 2.6).toFixed(1));
-  const subDist = parseFloat((1.8 + pseudoRandom(seed + 9) * 6.2).toFixed(1));
-  const dl1Dist = parseFloat((0.7 + pseudoRandom(seed + 10) * 1.5).toFixed(1));
-  const dl2Dist = parseFloat((dl1Dist + 1.1 + pseudoRandom(seed + 11) * 1.5).toFixed(1));
-  const dl3Dist = parseFloat((dl2Dist + 1.4 + pseudoRandom(seed + 12) * 1.8).toFixed(1));
-
-  const dl2Avail = parseFloat(Math.max(0.3, dlAvailable * 0.65).toFixed(1));
-  const dl3Avail = parseFloat(Math.max(0.1, dlAvailable * 0.25).toFixed(1));
-
-  const dl2Status: '여유' | '보통' | '포화' = dl2Avail >= 2 ? '여유' : dl2Avail >= 0.8 ? '보통' : '포화';
-  const dl3Status: '여유' | '보통' | '포화' = dl3Avail >= 2 ? '여유' : dl3Avail >= 0.8 ? '보통' : '포화';
-
-  const dlBaseName = raw.bjdong || raw.emd || raw.sigungu;
-  const dls = [
-    {
-      name: `${dlBaseName}DL #${(idx % 3) + 1}`,
-      availableMw: dlAvailable,
-      status: gridStatus,
-      distanceKm: dl1Dist,
-      estimatedInterconnectionCostWon: Math.round(dl1Dist * 45000000),
-      isRecommended: true,
-    },
-    {
-      name: `${raw.sigungu}DL #${((idx + 1) % 4) + 1}`,
-      availableMw: dl2Avail,
-      status: dl2Status,
-      distanceKm: dl2Dist,
-      estimatedInterconnectionCostWon: Math.round(dl2Dist * 45000000),
-    },
-    {
-      name: `연계선로DL #${((idx + 2) % 5) + 1}`,
-      availableMw: dl3Avail,
-      status: dl3Status,
-      distanceKm: dl3Dist,
-      estimatedInterconnectionCostWon: Math.round(dl3Dist * 45000000),
-    },
-  ];
 
   let basePricePerPyeong = 70000;
   if (cat === '잡종지') basePricePerPyeong = 95000;
@@ -684,22 +647,11 @@ function synthesizeDiscoveredParcel(
         pass: slopePass,
       },
     },
-    grid: {
-      substationName: `${raw.sigungu}변전소`,
-      substationDistanceKm: subDist,
-      substationCoordinates: [
-        parseFloat((lat + (pseudoRandom(seed + 18) - 0.5) * 0.05).toFixed(5)),
-        parseFloat((lng + (pseudoRandom(seed + 19) - 0.5) * 0.06).toFixed(5)),
-      ],
-      substationCapacityTotalMw: parseFloat((dlAvailable * 3.5 + 4.2).toFixed(1)),
-      mtrNumber: `#${(idx % 3) + 1} M.Tr`,
-      mtrAvailableMw: parseFloat((dlAvailable * 1.3).toFixed(1)),
-      dlName: `${dlBaseName}DL #${(idx % 3) + 1}`,
-      availableCapacityMw: dlAvailable,
-      status: gridStatus,
-      updatedAt: '2026-11-10',
-      distributionLines: dls,
-    },
+    grid: findNearestSubstation(lat, lng, {
+      sido: raw.sido,
+      sigungu: raw.sigungu,
+      bjdong: raw.bjdong,
+    }),
     realEstate: {
       avgTradingPricePerPyeong: avgTradePrice,
       estimatedLandPriceTotalWon: estimatedLandPrice,

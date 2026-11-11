@@ -76,7 +76,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
               <div className="flex items-center space-x-2">
                 <h3 className="font-bold text-base text-white">Lifety Solar Intelligence 종합 이용 가이드</h3>
                 <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-mono font-extrabold">
-                  v1.2.0 Official
+                  v1.2.1 Official
                 </span>
               </div>
               <p className="text-xs text-slate-400">
